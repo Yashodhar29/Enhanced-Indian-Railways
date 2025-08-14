@@ -18,7 +18,9 @@ import Blank from "./pages/Blank";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
-
+import BForm from "./pages/BForm";
+import Summary from "./pages/Summary";
+import Charts from "./pages/Charts";
 export default function App() {
   return (
     <>
@@ -33,6 +35,9 @@ export default function App() {
             <Route path="/profile" element={<UserProfiles />} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/blank" element={<Blank />} />
+            <Route path="/b-form" element={<BForm />} />
+            <Route path="/summary" element={<Summary />} />
+            <Route path="/charts" element={<Charts />} />
 
             {/* Forms */}
             <Route path="/form-elements" element={<FormElements />} />

@@ -1,17 +1,23 @@
 // react plugin for creating vector maps
 import { VectorMap } from "@react-jvectormap/core";
-import { worldMill } from "@react-jvectormap/world";
+import { inMill } from "@react-jvectormap/india";
 
 // Define the component props
-interface CountryMapProps {
+interface MaharashtraMapProps {
   mapColor?: string;
 }
 
-const CountryMap: React.FC<CountryMapProps> = ({ mapColor }) => {
+const CountryMap: React.FC<MaharashtraMapProps> = ({ mapColor }) => {
   return (
     <VectorMap
-      map={worldMill}
+      map={inMill}
       backgroundColor="transparent"
+      focusOn={{
+        latLng: [19.0760, 72.8777], // Center on Mumbai
+        scale: 5,
+        animate: true,
+      } as any} // Type assertion to bypass TypeScript error
+      selectedRegions={["IN-MH"]} // Highlight Maharashtra
       markerStyle={{
         initial: {
           fill: "#465FFF",
@@ -21,39 +27,34 @@ const CountryMap: React.FC<CountryMapProps> = ({ mapColor }) => {
       markersSelectable={true}
       markers={[
         {
-          latLng: [37.2580397, -104.657039],
-          name: "United States",
-          style: {
-            fill: "#465FFF",
-            borderWidth: 1,
-            borderColor: "white",
-            stroke: "#383f47",
-          },
-        },
-        {
-          latLng: [20.7504374, 73.7276105],
-          name: "India",
+          latLng: [19.0760, 72.8777],
+          name: "Mumbai",
           style: { fill: "#465FFF", borderWidth: 1, borderColor: "white" },
         },
         {
-          latLng: [53.613, -11.6368],
-          name: "United Kingdom",
+          latLng: [18.5204, 73.8567],
+          name: "Pune",
           style: { fill: "#465FFF", borderWidth: 1, borderColor: "white" },
         },
         {
-          latLng: [-25.0304388, 115.2092761],
-          name: "Sweden",
-          style: {
-            fill: "#465FFF",
-            borderWidth: 1,
-            borderColor: "white",
-            strokeOpacity: 0,
-          },
+          latLng: [21.1458, 79.0882],
+          name: "Nagpur",
+          style: { fill: "#465FFF", borderWidth: 1, borderColor: "white" },
+        },
+        {
+          latLng: [20.0111, 73.7907],
+          name: "Nashik",
+          style: { fill: "#465FFF", borderWidth: 1, borderColor: "white" },
+        },
+        {
+          latLng: [19.8762, 75.3433],
+          name: "Aurangabad",
+          style: { fill: "#465FFF", borderWidth: 1, borderColor: "white" },
         },
       ]}
-      zoomOnScroll={false}
+      zoomOnScroll={true}
       zoomMax={12}
-      zoomMin={1}
+      zoomMin={3}
       zoomAnimate={true}
       zoomStep={1.5}
       regionStyle={{
