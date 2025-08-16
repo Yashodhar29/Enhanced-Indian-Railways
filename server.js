@@ -78,10 +78,10 @@ app.get("/analysis/locos", async (req, res) => {
       // Get LOCO1 and LOCO2 columns from this table
       const { data: rows, error } = await supabase
         .from(table) // table name directly, no backticks
-        .select('LOCO1, LOCO2');
+        .select('loco1, loco2');
 
       if (error) {
-        console.error(`Error fetching table ${table}:`, error);
+        // console.error(`Error fetching table ${table}:`, error);
         continue; // skip to next table if query fails
       }
 
@@ -92,15 +92,15 @@ app.get("/analysis/locos", async (req, res) => {
 
       for (const row of rows) {
         // LOCO1 totals
-        if (isDSL(row.LOCO1)) {
+        if (isDSL(row.loco1)) {
           dslTotal++;
         } else {
           acTotal++;
         }
 
         // LOCO2 multi counts
-        if (row.LOCO2 && row.LOCO2.trim() !== "") {
-          if (isDSL(row.LOCO2)) {
+        if (row.loco2 && row.loco2.trim() !== "") {
+          if (isDSL(row.loco2)) {
             dslMulti++;
           } else {
             acMulti++;
@@ -117,7 +117,7 @@ app.get("/analysis/locos", async (req, res) => {
 
     res.json(results);
   } catch (err) {
-    console.error(err);
+    // console.error(err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -126,9 +126,9 @@ app.get("/analysis/locos", async (req, res) => {
 app.get("/api/wagon-totals", async (req, res) => {
   try {
     const tables = [
-      "SC-WADI", "WADI-SC", "GTL-WADI", "WADI-GTL", "UBL-HG", "HG-UBL",
-      "LTRR-SC", "SC-LTRR", "PUNE-DD", "DD-PUNE", "MRJ-PUNE", "PUNE-MRJ",
-      "SC-TJSP", "TJSP-SC"
+      "sc_wadi", "wadi_sc", "gtl_wadi", "wadi_gtl", "ubl_hg", "hg_ubl",
+      "ltrr_sc", "sc_ltrr", "pune_dd", "dd_pune", "mrj_pune", "pune_mrj",
+      "sc_tjsp", "tjsp_sc"
     ];
 
     let totalLoaded = 0;
@@ -138,12 +138,12 @@ app.get("/api/wagon-totals", async (req, res) => {
       const { data, error } = await supabase
         .from(tableName) // table names are fine as strings
         .select(`
-          loaded_wagons:WAGON,
-          isloaded:ISLOADED
+          loaded_wagons:wagon,
+          isloaded:isloaded
         `);
 
       if (error) {
-        console.error(`Error fetching ${tableName}:`, error);
+        // console.error(`Error fetching ${tableName}:`, error);
         continue; // skip this table if there's a problem
       }
 
@@ -162,20 +162,20 @@ app.get("/api/wagon-totals", async (req, res) => {
       { name: "Empty Wagons", value: totalEmpty }
     ];
 
-    console.log("Wagon totals:", resultData);
+    // console.log("Wagon totals:", resultData);
 
     res.json({ success: true, data: resultData });
   } catch (err) {
-    console.error("Error fetching wagon totals:", err);
+    // console.error("Error fetching wagon totals:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
 app.get("/api/ic-stats", async (req, res) => {
   const tables = [
-    "SC-WADI", "WADI-SC", "GTL-WADI", "WADI-GTL", "UBL-HG", "HG-UBL",
-    "LTRR-SC", "SC-LTRR", "PUNE-DD", "DD-PUNE", "MRJ-PUNE", "PUNE-MRJ",
-    "SC-TJSP", "TJSP-SC"
+    "sc_wadi", "wadi_sc", "gtl_wadi", "wadi_gtl", "ubl_hg", "hg_ubl",
+    "ltrr_sc", "sc_ltrr", "pune_dd", "dd_pune", "mrj_pune", "pune_mrj",
+    "sc_tjsp", "tjsp_sc"
   ];
 
   try {
@@ -187,7 +187,7 @@ app.get("/api/ic-stats", async (req, res) => {
       const { count: icCount } = await supabase
         .from(table)
         .select('*', { count: 'exact', head: true })
-        .eq('IC', 'Y');
+        .eq('ic', 'Y');
 
       // Count all records
       const { count: totalCount } = await supabase
@@ -205,7 +205,7 @@ app.get("/api/ic-stats", async (req, res) => {
 
     res.json({ success: true, data });
   } catch (err) {
-    console.error("Error in /api/ic-stats:", err);
+    // console.error("Error in /api/ic-stats:", err);
     res.status(500).json({ success: false, message: "Server error fetching IC stats" });
   }
 });
@@ -221,6 +221,7 @@ app.post("/api/login", async (req, res) => {
       .eq('username', username.trim())
       .eq('password', password);
 
+    // console.log(data)
     if (error) throw error;
 
     if (users && users.length > 0) {
@@ -248,13 +249,14 @@ app.post("/api/login", async (req, res) => {
         sameSite: "lax",
         maxAge: 24 * 60 * 60 * 1000 // 1 day
       });
-
+      // console.log('success')
       return res.json({ success: true });
     } else {
+      f
       return res.json({ success: false, message: "Invalid username or password" });
     }
   } catch (error) {
-    console.error("Login error:", error);
+    // console.error("Login error:", error);
     res.status(500).json({ success: false, message: "Error connecting to server" });
   }
 });
@@ -344,22 +346,12 @@ function cleanYesNo(val) {
 }
 
 const allowedTables = [
-  "SC-WADI", "WADI-SC", "GTL-WADI", "WADI-GTL", "UBL-HG", "HG-UBL",
-  "LTRR-SC", "SC-LTRR", "PUNE-DD", "DD-PUNE", "MRJ-PUNE", "PUNE-MRJ",
-  "SC-TJSP", "TJSP-SC"
+  "sc_wadi", "wadi_sc", "gtl_wadi", "wadi_gtl", "ubl_hg", "hg_ubl",
+  "ltrr_sc", "sc_ltrr", "pune_dd", "dd_pune", "mrj_pune", "pune_mrj",
+  "sc_tjsp", "tjsp_sc"
 ];
 
-// Group into SRC-DEST & DEST-SRC pairs
-const routePairs = [
-  ["SC-WADI", "WADI-SC"],
-  ["GTL-WADI", "WADI-GTL"],
-  ["UBL-HG", "HG-UBL"],
-  ["LTRR-SC", "SC-LTRR"],
-  ["PUNE-DD", "DD-PUNE"],
-  ["MRJ-PUNE", "PUNE-MRJ"],
-  ["SC-TJSP", "TJSP-SC"]
-];
-// API endpoint
+
 // Add this route to server.js
 
 function authenticateUser(req, res, next) {
@@ -377,52 +369,6 @@ function authenticateUser(req, res, next) {
   }
 }
 
-// app.get("/api/summary/:type", async (req, res) => {
-//   const type = (req.params.type || "").toLowerCase(); // master | interchanged | non-interchanged
-//   const allowedTypes = ["master", "interchanged", "non-interchanged"];
-//   if (!allowedTypes.includes(type)) {
-//     return res.status(400).json({ success: false, message: "Invalid summary type" });
-//   }
-
-//   // Ordered SRC-DEST / DEST-SRC pairs (keeps the order you requested)
-//   const routePairs = [
-//     ["SC-WADI", "WADI-SC"],
-//     ["GTL-WADI", "WADI-GTL"],
-//     ["UBL-HG", "HG-UBL"],
-//     ["LTRR-SC", "SC-LTRR"],
-//     ["PUNE-DD", "DD-PUNE"],
-//     ["MRJ-PUNE", "PUNE-MRJ"],
-//     ["SC-TJSP", "TJSP-SC"]
-//   ];
-
-//   try {
-//     const results = [];
-
-//     // Build WHERE clause according to selected type
-//     let whereClause = "";
-//     if (type === "interchanged") {
-//       whereClause = " WHERE `IC` = 'Y' ";
-//     } else if (type === "non-interchanged") {
-//       whereClause = " WHERE `IC` IS NULL OR `IC` <> 'Y' ";
-//     }
-
-//     // Query each pair in order, pushing SRC-DEST then DEST-SRC
-//     for (const [src, dest] of routePairs) {
-//       // fetch src (SRC-DEST)
-//       const [rowsSrc] = await db.query(`SELECT * FROM \`${src}\` ${whereClause}`);
-//       results.push({ table: src, data: rowsSrc });
-
-//       // fetch dest (DEST-SRC)
-//       const [rowsDest] = await db.query(`SELECT * FROM \`${dest}\` ${whereClause}`);
-//       results.push({ table: dest, data: rowsDest });
-//     }
-
-//     return res.json({ success: true, data: results });
-//   } catch (err) {
-//     console.error("Error in /api/summary/:type ->", err);
-//     return res.status(500).json({ success: false, message: "Server error fetching summary" });
-//   }
-// });
 
 app.get("/api/summary/:type", async (req, res) => {
   const type = (req.params.type || "").toLowerCase();
@@ -432,14 +378,15 @@ app.get("/api/summary/:type", async (req, res) => {
   }
 
   const routePairs = [
-    ["SC-WADI", "WADI-SC"],
-    ["GTL-WADI", "WADI-GTL"],
-    ["UBL-HG", "HG-UBL"],
-    ["LTRR-SC", "SC-LTRR"],
-    ["PUNE-DD", "DD-PUNE"],
-    ["MRJ-PUNE", "PUNE-MRJ"],
-    ["SC-TJSP", "TJSP-SC"]
+    ["sc_wadi", "wadi_sc"],
+    ["gtl_wadi", "wadi_gtl"],
+    ["ubl_hg", "hg_ubl"],
+    ["ltrr_sc", "sc_ltrr"],
+    ["pune_dd", "dd_pune"],
+    ["mrj_pune", "pune_mrj"],
+    ["sc_tjsp", "tjsp_sc"]
   ];
+
 
   try {
     const results = [];
@@ -447,9 +394,9 @@ app.get("/api/summary/:type", async (req, res) => {
     // Build WHERE clause according to selected type
     let queryFilter = {};
     if (type === "forecasted") {
-      queryFilter = { FC: 'Y' };
+      queryFilter = { fc: 'Y' };
     } else if (type === "interchanged") {
-      queryFilter = { IC: 'Y' };
+      queryFilter = { ic: 'Y' };
     } else if (type === "remaining") {
       queryFilter = {
         or: [
@@ -503,11 +450,11 @@ app.get("/api/get-user-and-role", authenticateUser, (req, res) => {
 // Add this endpoint to your server.js
 app.get("/api/forecast-vs-actual", async (req, res) => {
   const tables = [
-    "dd-pune", "gtl-wadi", "hg-ubl", "ltrr-sc",
-    "mrj-pune", "pune-dd", "pune-mrj", "sc-ltrr",
-    "sc-tjsp", "sc-wadi", "tjsp-sc", "ubl-hg",
-    "wadi-gtl", "wadi-sc"
+    "sc_wadi", "wadi_sc", "gtl_wadi", "wadi_gtl", "ubl_hg", "hg_ubl",
+    "ltrr_sc", "sc_ltrr", "pune_dd", "dd_pune", "mrj_pune", "pune_mrj",
+    "sc_tjsp", "tjsp_sc"
   ];
+
 
   try {
     let results = {
@@ -521,13 +468,23 @@ app.get("/api/forecast-vs-actual", async (req, res) => {
       // First get all relevant data from the table
       const { data: rows, error } = await supabase
         .from(table)
-        .select('ARRIVAL, FC, IC');
+        .select('arrival, fc, ic');
 
       if (error) throw error;
 
       // Process rows in JavaScript instead of SQL
       const timePeriods = rows.reduce((acc, row) => {
-        const hour = new Date(row.ARRIVAL).getHours();
+        if (!row.arrival || typeof row.arrival !== 'string') {
+          console.warn(`Skipping row with invalid arrival: ${row.arrival}`);
+          return acc;
+        }
+        // Ensure arrival is a valid HH:MM:SS format
+        const timeMatch = row.arrival.match(/^(\d{2}):(\d{2}):(\d{2})$/);
+        if (!timeMatch) {
+          console.warn(`Invalid time format for arrival: ${row.arrival}`);
+          return acc;
+        }
+        const hour = parseInt(timeMatch[1], 10);
         let period;
 
         if (hour >= 6 && hour <= 11) period = 'Morning';
@@ -539,8 +496,8 @@ app.get("/api/forecast-vs-actual", async (req, res) => {
           acc[period] = { forecasted: 0, actual: 0 };
         }
 
-        if (row.FC === 'Y') acc[period].forecasted++;
-        if (row.IC === 'Y') acc[period].actual++;
+        if (row.fc === 'Y') acc[period].forecasted++;
+        if (row.ic === 'Y') acc[period].actual++;
 
         return acc;
       }, {});
@@ -579,29 +536,30 @@ app.get("/api/forecast-vs-actual", async (req, res) => {
 app.get("/api/wagon-summary", async (req, res) => {
   try {
     const tables = [
-      "SC-WADI", "WADI-SC",
-      "GTL-WADI", "WADI-GTL",
-      "UBL-HG", "HG-UBL",
-      "LTRR-SC", "SC-LTRR",
-      "PUNE-DD", "DD-PUNE",
-      "MRJ-PUNE", "PUNE-MRJ",
-      "SC-TJSP", "TJSP-SC"
+      "sc_wadi", "wadi_sc", "gtl_wadi", "wadi_gtl", "ubl_hg", "hg_ubl",
+      "ltrr_sc", "sc_ltrr", "pune_dd", "dd_pune", "mrj_pune", "pune_mrj",
+      "sc_tjsp", "tjsp_sc"
     ];
+
+
 
     let summary = [];
 
     for (let tableName of tables) {
       // Get loaded wagons count
-      const { count: loadedWagons } = await supabase
+      const { count: loadedWagons, error: loadedError } = await supabase
         .from(tableName)
-        .select('WAGON', { count: 'exact', head: true })
-        .eq('ISLOADED', 'L');
+        .select("wagon", { count: "exact", head: true })
+        .eq("isloaded", "L");
 
-      // Get empty wagons count
-      const { count: emptyWagons } = await supabase
+      if (loadedError) throw loadedError;
+
+      const { count: emptyWagons, error: emptyError } = await supabase
         .from(tableName)
-        .select('WAGON', { count: 'exact', head: true })
-        .eq('ISLOADED', 'E');
+        .select("wagon", { count: "exact", head: true })
+        .eq("isloaded", "E");
+
+      if (emptyError) throw emptyError;
 
       summary.push({
         route: tableName.toUpperCase(),
@@ -623,46 +581,47 @@ app.get("/api/wagon-summary", async (req, res) => {
 app.get("/api/ic-fc-stats", async (req, res) => {
   // Define table pairs with direction indicators (same as original)
   const tablePairs = [
-    { src: "SC", dest: "WADI" },
-    { src: "GTL", dest: "WADI" },
-    { src: "UBL", dest: "HG" },
-    { src: "LTRR", dest: "SC" },
-    { src: "PUNE", dest: "DD" },
-    { src: "MRJ", dest: "PUNE" },
-    { src: "SC", dest: "TJSP" }
+    { src: "sc", dest: "wadi" },
+    { src: "gtl", dest: "wadi" },
+    { src: "ubl", dest: "hg" },
+    { src: "ltrr", dest: "sc" },
+    { src: "pune", dest: "dd" },
+    { src: "mrj", dest: "pune" },
+    { src: "sc", dest: "tjsp" }
   ];
+
 
   try {
     const results = [];
 
     for (const pair of tablePairs) {
-      const forwardTable = `${pair.src}-${pair.dest}`;
-      const reverseTable = `${pair.dest}-${pair.src}`;
+      const forwardTable = `${pair.src}_${pair.dest}`;
+      const reverseTable = `${pair.dest}_${pair.src}`;
 
       // Process forward direction (SRC-DEST)
       const { count: forwardIC } = await supabase
         .from(forwardTable)
         .select('*', { count: 'exact', head: true })
-        .eq('IC', 'Y');
+        .eq('ic', 'Y');
 
       const { count: forwardFC } = await supabase
         .from(forwardTable)
         .select('*', { count: 'exact', head: true })
-        .eq('FC', 'Y');
+        .eq('fc', 'Y');
 
       // Process reverse direction (DEST-SRC)
       const { count: reverseIC } = await supabase
         .from(reverseTable)
         .select('*', { count: 'exact', head: true })
-        .eq('IC', 'Y');
+        .eq('ic', 'Y');
 
       const { count: reverseFC } = await supabase
         .from(reverseTable)
         .select('*', { count: 'exact', head: true })
-        .eq('FC', 'Y');
+        .eq('fc', 'Y');
 
       results.push({
-        pair: `${pair.src}-${pair.dest}`,
+        pair: `${pair.src}_${pair.dest}`,
         directions: [
           {
             direction: 'forward',
@@ -695,13 +654,9 @@ app.get("/api/ic-fc-stats", async (req, res) => {
 });
 app.get("/api/dashboard-stats", async (req, res) => {
   const tables = [
-    "SC-WADI", "WADI-SC",
-    "GTL-WADI", "WADI-GTL",
-    "UBL-HG", "HG-UBL",
-    "LTRR-SC", "SC-LTRR",
-    "PUNE-DD", "DD-PUNE",
-    "MRJ-PUNE", "PUNE-MRJ",
-    "SC-TJSP", "TJSP-SC"
+    "sc_wadi", "wadi_sc", "gtl_wadi", "wadi_gtl", "ubl_hg", "hg_ubl",
+    "ltrr_sc", "sc_ltrr", "pune_dd", "dd_pune", "mrj_pune", "pune_mrj",
+    "sc_tjsp", "tjsp_sc"
   ];
 
   try {
@@ -715,13 +670,13 @@ app.get("/api/dashboard-stats", async (req, res) => {
       const { count: icCount } = await supabase
         .from(table)
         .select('*', { count: 'exact', head: true })
-        .eq('IC', 'Y');
+        .eq('ic', 'Y');
 
       // Get FC count
       const { count: fcCount } = await supabase
         .from(table)
         .select('*', { count: 'exact', head: true })
-        .eq('FC', 'Y');
+        .eq('fc', 'Y');
 
       // Get total count
       const { count: totalCount } = await supabase
@@ -759,7 +714,7 @@ app.get("/api/dashboard-stats", async (req, res) => {
 
 app.get("/api/route/:tableName", async (req, res) => {
   try {
-    const tableName = req.params.tableName;
+    const tableName = req.params.tableName.toLowerCase();
 
     // Make sure to define allowedTables somewhere in your code
     // Example: const allowedTables = ["SC-WADI", "WADI-SC", ...];
@@ -781,8 +736,6 @@ app.get("/api/route/:tableName", async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
-
-
 
 
 // Process Excel and update database
@@ -813,21 +766,41 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     });
   }
 });
-function normalizeRoute(route) {
-  if (!route || !route.includes("-")) return route;
-  const [src, dest] = route.split("-");
-  return [src, dest].sort().join("-"); // alphabetical order to merge reverse
+
+function normalizeRoute(rawRoute) {
+  if (!rawRoute || typeof rawRoute !== "string") return "";
+
+  rawRoute = rawRoute.trim();
+  if (!rawRoute) return "";
+
+  // normalize dash and remove extra spaces
+  const parts = rawRoute.split(/\s*-\s*/); // split on "-" with optional spaces
+  if (parts.length !== 2) {
+    // console.log("Skipping unknown route: actual route is", rawRoute);
+    return "";
+  }
+  // console.log(`input: ${rawRoute} -> normalized: ${parts[0].toLowerCase() + "_" + parts[1].toLowerCase()}`)
+  return parts[0].toLowerCase() + "_" + parts[1].toLowerCase();
 }
+
+
 // Core processing function
 async function processExcelData(data) {
   const ROUTE_COL = 29; // Column AD (0-based index)
   const processedRoutes = [];
   let currentRoute = null;
   let startRow = 3; // Data starts at row 4 (0-based index 3)
-
   for (let i = 3; i < data.length; i++) {
     const route = (data[i][ROUTE_COL] || '').toString().trim();
-    const normalizedRoute = route ? route.replace(/\s*-\s*/g, "-") : null;
+    if (!route) {
+      continue;
+    }
+    const normalizedRoute = normalizeRoute(route);
+    // console.log("normalizedRoute: " + normalizedRoute)
+    if (!allowedTables.includes(normalizedRoute)) {
+      console.warn(`Skipping unknown route: ${normalizedRoute} actual route is ${route}`);
+      return;
+    }
 
     // New route block detected
     if (normalizedRoute && normalizedRoute !== currentRoute) {
@@ -862,13 +835,14 @@ async function processExcelData(data) {
 
 // Process a single route block
 async function processRouteBlock(route, data, startRow, endRow) {
-  // Generate reverse route name
-  const [src, dest] = route.split("-");
-  const reverseRoute = `${dest}-${src}`;
-
+  const [src, dest] = route.split("_");
+  const reverseRoute = `${dest}_${src}`;
+  // console.log(reverseRoute)
   // Extract data for both directions
   const srcDestData = extractRakeData(data, startRow, endRow, "SRC-DEST");
   const destSrcData = extractRakeData(data, startRow, endRow, "DEST-SRC");
+
+  // console.log("destSrcData length:", destSrcData.length, "for", reverseRoute);
 
   // Update database
   await updateRouteTable(route, srcDestData);
@@ -881,7 +855,6 @@ async function processRouteBlock(route, data, startRow, endRow) {
     destSrcCount: destSrcData.length
   };
 }
-
 // Extract rake data with all columns
 function extractRakeData(data, startRow, endRow, direction) {
   const config = direction === "SRC-DEST"
@@ -1008,37 +981,48 @@ function extractRakeData(data, startRow, endRow, direction) {
 async function updateRouteTable(tableName, rakes) {
   if (!rakes.length) return;
 
+  // console.log("Total table names recieving: " + tableName);
   try {
     // 🚨 Clear the table before inserting new data
     const { error: truncateError } = await supabase
       .from(tableName)
       .delete()
-      .neq('id', 0); // Delete all records (assuming 'id' exists)
+      .neq('rake_id', 0); // Delete all records (assuming 'id' exists)
 
     if (truncateError) throw truncateError;
-    console.log(`Truncated table ${tableName}`);
+    // console.log(`Truncated table ${tableName}`);
 
     // Prepare data for insertion
     const records = rakes.map(rake => ({
-      "RAKE ID": rake.rakeId,
-      "FROM": rake.from,
-      "TO": rake.to,
-      "TYPE": rake.type,
-      "ISLOADED": rake.isLoaded,
-      "LOCO1": rake.loco1,
-      "LOCO2": rake.loco2,
-      "BASE": rake.base,
-      "DUE DATE": rake.dueDate,
-      "WAGON": rake.wagon,
-      "BPC_STN": rake.bpcStn,
-      "BPC_DATE": rake.bpcDate,
-      "BPC_TYPE": rake.bpcType,
-      "ARRIVAL": rake.arrival,
-      "STTS": rake.stts,
-      "LOC": rake.loc,
-      "IC": rake.ic,
-      "FC": rake.fc
+      "rake_id": rake.rakeId ? rake.rakeId.trim() : null,
+      "from_station": rake.from,
+      "to_station": rake.to,
+      "type": rake.type,
+      "isloaded": rake.isLoaded,
+      "loco1": rake.loco1,
+      "loco2": rake.loco2,
+      "base": rake.base,
+      "due_date": rake.dueDate,
+      "wagon": rake.wagon ? parseInt(rake.wagon, 10) : null, // Ensure integer
+      "bpc_stn": rake.bpcStn,
+      "bpc_date": rake.bpcDate,
+      "bpc_type": rake.bpcType,
+      "arrival": rake.arrival,
+      "stts": rake.stts,
+      "loc": rake.loc,
+      "ic": rake.ic,
+      "fc": rake.fc
+      // "name": null, // If needed, add this (schema has it, but code doesn't extract it)
     }));
+
+    function dedupeBatch(batch, key = "rake_id") {
+      const seen = new Set();
+      return batch.filter(item => {
+        if (seen.has(item[key])) return false;
+        seen.add(item[key]);
+        return true;
+      });
+    }
 
     // Insert in batches (Supabase has a limit per request)
     const BATCH_SIZE = 100;
@@ -1046,20 +1030,28 @@ async function updateRouteTable(tableName, rakes) {
 
     for (let i = 0; i < records.length; i += BATCH_SIZE) {
       const batch = records.slice(i, i + BATCH_SIZE);
+      const uniqueBatch = dedupeBatch(batch);
+
       const { data, error } = await supabase
         .from(tableName)
-        .insert(batch);
+        .upsert(uniqueBatch, { onConflict: ['rake_id'] });
 
-      if (error) throw error;
+      if (error) {
+        console.error(`Insert error for table ${tableName}:`, error.message, error.details || "");
+      } else {
+        console.log(`Inserted ${batch.length} into ${tableName}`);
+      }
+
       insertedCount += batch.length;
     }
 
-    console.log(`Inserted ${insertedCount} rakes into ${tableName}`);
+
+    // console.log(`Inserted ${insertedCount} rakes into ${tableName}`);
     return insertedCount;
 
   } catch (error) {
-    console.error(`Error updating ${tableName}:`, error);
-    throw new Error(`Database update failed for ${tableName}`);
+    // console.error(`Error updating ${tableName}:`, error);
+    // throw new Error(`Database update failed for ${tableName}`);
   }
 }
 

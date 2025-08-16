@@ -120,7 +120,7 @@ const Summary = () => {
               return (
                 <div key={idx} className="rounded-lg border border-gray-200">
                   <h4 className="rounded-t-lg bg-gray-50 px-4 py-2 font-medium text-gray-500 dark:border-gray-800 dark:bg-white/[0.03]">
-                    {section.table.replace(/-/g, " → ")}
+                    {section.table.replace(/_/g, " → ").toUpperCase()}
                   </h4>
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
@@ -143,9 +143,9 @@ const Summary = () => {
                             {headers.map((header) => (
                               <td
                                 key={`${row.id}-${header}`}
-                                className={`whitespace-nowrap px-4 py-2 text-sm ${row['IC'] === 'Y'
+                                className={`whitespace-nowrap px-4 py-2 text-sm ${row['ic'] === 'Y'
                                     ? 'text-green-600 font-medium'
-                                    : row['FC'] === 'Y'
+                                    : row['fc'] === 'Y'
                                       ? 'text-blue-600 font-medium'
                                       : 'text-gray-500'
                                   }`}

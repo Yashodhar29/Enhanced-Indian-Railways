@@ -14,6 +14,22 @@ const BForm = () => {
     "LTRR-SC", "SC-LTRR", "PUNE-DD", "DD-PUNE", "MRJ-PUNE", "PUNE-MRJ",
     "SC-TJSP", "TJSP-SC"
   ];
+  function normalizeRoute(rawRoute: string): string {
+    if (!rawRoute || typeof rawRoute !== "string") return "";
+
+    rawRoute = rawRoute.trim();
+    if (!rawRoute) return "";
+
+    // normalize dash and remove extra spaces
+    const parts = rawRoute.split(/\s*-\s*/); // split on "-" with optional spaces
+    if (parts.length !== 2) {
+      // console.log("Skipping unknown route: actual route is", rawRoute);
+      return "";
+    }
+    // console.log(`input: ${rawRoute} -> normalized: ${parts[0].toLowerCase() + "_" + parts[1].toLowerCase()}`)
+    return parts[0].toLowerCase() + "_" + parts[1].toLowerCase();
+  }
+
 
   const [selectedRoute, setSelectedRoute] = useState<string>("SC-LTRR");
   const [tableData, setTableData] = useState<TableRow[]>([]);
@@ -23,7 +39,7 @@ const BForm = () => {
   const fetchData = async (route: string) => {
     setLoading(true);
     try {
-      const res = await axios.get(`http://localhost:3002/api/route/${route}`);
+      const res = await axios.get(`http://localhost:3002/api/route/${normalizeRoute(route)}`);
       if (res.data.success) {
         const formatted = res.data.data.map((row: any, idx: number) => {
           const newRow: TableRow = { id: idx + 1 };
@@ -57,7 +73,7 @@ const BForm = () => {
         description="View and analyze route data"
       />
       <PageBreadcrumb pageTitle="Route Data" />
-      
+
       <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] lg:p-6">
         <h3 className="mb-5 text-lg font-semibold text-gray-800 dark:text-white/90 lg:mb-7">
           Route Data Viewer

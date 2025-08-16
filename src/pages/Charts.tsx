@@ -49,15 +49,30 @@ export default function Charts() {
   const [errorWagon, setErrorWagon] = useState<string | null>(null);
 
   // Fetch locomotive data
+  function normalizeRoute(rawRoute: string): string {
+    if (!rawRoute || typeof rawRoute !== "string") return "";
+
+    rawRoute = rawRoute.trim();
+    if (!rawRoute) return "";
+
+    // normalize dash and remove extra spaces
+    const parts = rawRoute.split(/\s*-\s*/); // split on "-" with optional spaces
+    if (parts.length !== 2) {
+      // console.log("Skipping unknown route: actual route is", rawRoute);
+      return "";
+    }
+    // console.log(`input: ${rawRoute} -> normalized: ${parts[0].toLowerCase() + "_" + parts[1].toLowerCase()}`)
+    return parts[0].toLowerCase() + "_" + parts[1].toLowerCase();
+  }
   useEffect(() => {
     const fetchLocoData = async () => {
       try {
         const response = await fetch("http://localhost:3002/analysis/locos");
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-        
         const apiData: LocoData[] = await response.json();
+        console.log(apiData)
         const ordered = allowedTables.map(route => {
-          const found = apiData.find(item => item.route === route);
+          const found = apiData.find(item => item.route === normalizeRoute(route));
           return found || {
             route,
             DSL: { total: 0, multi: 0 },
@@ -83,17 +98,18 @@ export default function Charts() {
       try {
         const response = await fetch("http://localhost:3002/api/wagon-summary");
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-        
+
         const data = await response.json();
+        console.log(data)
         if (data.success) {
           const formattedData = data.data
             .map((item: any) => ({
-              id: item.route,
-              name: item.route,
+              id: item.route.replace(/_/g, "-"),
+              name: item.route.replace(/_/g, "-"),
               Loaded: Number(item.loaded_wagons) || 0,
               Empty: Number(item.empty_wagons) || 0
             }))
-            .sort((a: WagonData, b: WagonData) => 
+            .sort((a: WagonData, b: WagonData) =>
               routeOrder.indexOf(a.name) - routeOrder.indexOf(b.name));
 
           setWagonData(formattedData);
@@ -116,8 +132,13 @@ export default function Charts() {
     dataLabels: { enabled: false },
     stroke: { show: true, width: 2, colors: ['transparent'] },
     xaxis: {
-      categories: locoData.map(item => item.route),
-      labels: { rotate: -45, style: { fontSize: '12px' } }
+      categories: wagonData.map(item => item.name),
+      labels: {
+        rotate: -45, // tilt to 45°
+        rotateAlways: true, // force rotation
+        hideOverlappingLabels: false, // don’t auto-hide
+        style: { fontSize: '12px' }
+      }
     },
     yaxis: { title: { text: 'Count' } },
     fill: { opacity: 1 },
@@ -139,7 +160,12 @@ export default function Charts() {
     stroke: { show: true, width: 2, colors: ['transparent'] },
     xaxis: {
       categories: wagonData.map(item => item.name),
-      labels: { rotate: -45, style: { fontSize: '12px' } }
+      labels: {
+        rotate: -45, // tilt to 45°
+        rotateAlways: true, // force rotation
+        hideOverlappingLabels: false, // don’t auto-hide
+        style: { fontSize: '12px' }
+      }
     },
     yaxis: { title: { text: 'Wagon Count' } },
     fill: { opacity: 1 },
@@ -163,7 +189,7 @@ export default function Charts() {
         description="Analysis of locomotive and wagon usage"
       />
       <PageBreadcrumb pageTitle="Transport Analysis" />
-      
+
       <div className="space-y-6">
         {/* Locomotive Analysis Section */}
         <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] lg:p-6">
@@ -185,17 +211,15 @@ export default function Charts() {
               <div className="mb-6 flex gap-2">
                 <button
                   onClick={() => setView("DSL")}
-                  className={`rounded-lg px-4 py-2 text-sm ${
-                    view === "DSL" ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                  className={`rounded-lg px-4 py-2 text-sm ${view === "DSL" ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
                 >
                   DSL Locos
                 </button>
                 <button
                   onClick={() => setView("AC")}
-                  className={`rounded-lg px-4 py-2 text-sm ${
-                    view === "AC" ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                  className={`rounded-lg px-4 py-2 text-sm ${view === "AC" ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
                 >
                   AC Locos
                 </button>
