@@ -73,7 +73,7 @@ const Summary = () => {
         <div className="mb-4 flex flex-wrap gap-2">
           <button
             onClick={() => setViewType("master")}
-            className={`rounded-lg px-4 py-2 text-sm ${viewType === "master" ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+            className={`rounded-lg px-4 py-2 text-sm  ${viewType === "master" ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
           >
             Master (All Data)
           </button>
@@ -119,12 +119,12 @@ const Summary = () => {
 
               return (
                 <div key={idx} className="rounded-lg border border-gray-200">
-                  <h4 className="rounded-t-lg bg-gray-50 px-4 py-2 font-medium text-gray-700">
+                  <h4 className="rounded-t-lg bg-gray-50 px-4 py-2 font-medium text-gray-500 dark:border-gray-800 dark:bg-white/[0.03]">
                     {section.table.replace(/-/g, " → ")}
                   </h4>
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                      <thead className="bg-gray-50 dark:border-gray-300 dark:bg-white/[0.03]">
                         <tr>
                           {headers.map((header) => (
                             <th
@@ -137,9 +137,9 @@ const Summary = () => {
                           ))}
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200 bg-white">
+                      <tbody className="divide-y divide-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
                         {section.rows.map((row) => (
-                          <tr key={row.id} className="hover:bg-gray-50">
+                          <tr key={row.id} className="hover:bg-gray-50 dark:hover:bg-gray-900">
                             {headers.map((header) => (
                               <td
                                 key={`${row.id}-${header}`}

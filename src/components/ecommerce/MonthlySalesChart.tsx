@@ -1,8 +1,5 @@
 import Chart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
-import { Dropdown } from "../ui/dropdown/Dropdown";
-import { DropdownItem } from "../ui/dropdown/DropdownItem";
-import { MoreDotIcon } from "../../icons";
 import { useState, useEffect } from "react";
 import './ecommerce.css';
 
@@ -109,37 +106,8 @@ function ForecastVsActualChart() {
     </div>
   );
 }
-interface WagonData {
-  route: string;
-  loaded_wagons: number;
-  empty_wagons: number;
-}
 
 export default function MonthlySalesChart() {
-  const [wagonChartData, setWagonChartData] = useState<WagonData[]>([]);
-  const [loading, setLoading] = useState(true);
-
-
-
-  useEffect(() => {
-    const fetchWagonData = async () => {
-      try {
-        const response = await fetch("http://localhost:3002/api/wagon-summary");
-        const data = await response.json();
-        if (data.success) {
-          setWagonChartData(data.data);
-        }
-      } catch (err) {
-        console.error("Error fetching wagon data:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchWagonData();
-  }, []);
-
-  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-5 pt-5 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-6">

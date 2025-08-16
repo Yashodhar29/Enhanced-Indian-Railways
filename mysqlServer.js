@@ -48,12 +48,13 @@ const dbConfig = {
   dateStrings: true,
 };
 
-let supabase;
+let db;
 let supabaseUrl = "https://pojmggviqeoezopoiija.supabase.co";
-let supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvam1nZ3ZpcWVvZXpvcG9paWphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyNDU1MTYsImV4cCI6MjA3MDgyMTUxNn0.9cysU2JShCs0Qn9usUOkGeX71hC8F6MCkpv1xZCpEwI"
+let supabaseAnonKey  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvam1nZ3ZpcWVvZXpvcG9paWphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyNDU1MTYsImV4cCI6MjA3MDgyMTUxNn0.9cysU2JShCs0Qn9usUOkGeX71hC8F6MCkpv1xZCpEwI" 
 async function connectDB() {
   try {
-    supabase = await createClient(supabaseUrl, supabaseAnonKey)
+    // db = await mysql.createConnection(dbConfig);
+    db = await createClient(supabaseUrl, supabaseAnonKey)
     // db = await postgres(connectionString)
     console.log("Database connected successfully");
   } catch (error) {
@@ -61,6 +62,26 @@ async function connectDB() {
     process.exit(1);
   }
 }
+
+// Login endpoint (unchanged)
+// older
+// app.post("/api/login", async (req, res) => {
+//   const { username, password } = req.body;
+//   try {
+//     const [rows] = await db.execute(
+//       "SELECT * FROM users WHERE username = ? AND password = ?",
+//       [username.trim(), password]
+//     );
+//     if (rows.length > 0) {
+//       res.json({ success: true });
+//     } else {
+//       res.json({ success: false, message: "Invalid username or password" });
+//     }
+//   } catch (error) {
+//     console.error("Login error:", error);
+//     res.status(500).json({ success: false, message: "Error connecting to server" });
+//   }
+// });
 const DSL_PREFIXES = ["11", "12", "14", "70", "40"];
 
 function isDSL(loco) {
@@ -69,21 +90,12 @@ function isDSL(loco) {
 }
 
 
-
 app.get("/analysis/locos", async (req, res) => {
   try {
     const results = [];
 
     for (const table of allowedTables) {
-      // Get LOCO1 and LOCO2 columns from this table
-      const { data: rows, error } = await supabase
-        .from(table) // table name directly, no backticks
-        .select('LOCO1, LOCO2');
-
-      if (error) {
-        console.error(`Error fetching table ${table}:`, error);
-        continue; // skip to next table if query fails
-      }
+      const [rows] = await db.query(`SELECT LOCO1, LOCO2 FROM \`${table}\``);
 
       let dslTotal = 0;
       let acTotal = 0;
@@ -121,8 +133,6 @@ app.get("/analysis/locos", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
-
 app.get("/api/wagon-totals", async (req, res) => {
   try {
     const tables = [
@@ -135,36 +145,25 @@ app.get("/api/wagon-totals", async (req, res) => {
     let totalEmpty = 0;
 
     for (let tableName of tables) {
-      const { data, error } = await supabase
-        .from(tableName) // table names are fine as strings
-        .select(`
-          loaded_wagons:WAGON,
-          isloaded:ISLOADED
-        `);
-
-      if (error) {
-        console.error(`Error fetching ${tableName}:`, error);
-        continue; // skip this table if there's a problem
-      }
-
-      // Summation logic in JS instead of SQL
-      for (const row of data) {
-        if (row.isloaded === 'L') {
-          totalLoaded += row.loaded_wagons || 0;
-        } else if (row.isloaded === 'E') {
-          totalEmpty += row.loaded_wagons || 0;
-        }
-      }
+      const [result] = await db.query(
+        `SELECT 
+           SUM(CASE WHEN ISLOADED = 'L' THEN WAGON ELSE 0 END) AS loaded_wagons,
+           SUM(CASE WHEN ISLOADED = 'E' THEN WAGON ELSE 0 END) AS empty_wagons
+         FROM \`${tableName}\``
+      );
+      // Convert to number, handle null/undefined with || 0
+      totalLoaded += Number(result[0].loaded_wagons) || 0;
+      totalEmpty += Number(result[0].empty_wagons) || 0;
     }
 
-    const resultData = [
+    const data = [
       { name: "Loaded Wagons", value: totalLoaded },
       { name: "Empty Wagons", value: totalEmpty }
     ];
 
-    console.log("Wagon totals:", resultData);
+    console.log("Wagon totals:", data); // Debug log
 
-    res.json({ success: true, data: resultData });
+    res.json({ success: true, data });
   } catch (err) {
     console.error("Error fetching wagon totals:", err);
     res.status(500).json({ success: false, message: "Server error" });
@@ -183,19 +182,14 @@ app.get("/api/ic-stats", async (req, res) => {
     let totalTrains = 0;
 
     for (const table of tables) {
-      // Count IC = 'Y' records
-      const { count: icCount } = await supabase
-        .from(table)
-        .select('*', { count: 'exact', head: true })
-        .eq('IC', 'Y');
-
-      // Count all records
-      const { count: totalCount } = await supabase
-        .from(table)
-        .select('*', { count: 'exact', head: true });
-
-      totalIC += icCount || 0;
-      totalTrains += totalCount || 0;
+      const [icRows] = await db.query(
+        `SELECT COUNT(*) AS cnt FROM \`${table}\` WHERE IC = 'Y'`
+      );
+      const [totalRows] = await db.query(
+        `SELECT COUNT(*) AS cnt FROM \`${table}\``
+      );
+      totalIC += icRows[0].cnt;
+      totalTrains += totalRows[0].cnt;
     }
 
     const data = [
@@ -214,37 +208,25 @@ app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    // Supabase equivalent of the MySQL query
-    const { data: users, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('username', username.trim())
-      .eq('password', password);
+    const [rows] = await db.execute(
+      "SELECT * FROM users WHERE username = ? AND password = ?",
+      [username.trim(), password]
+    );
 
-    if (error) throw error;
+    if (rows.length > 0) {
+      const user = rows[0];
 
-    if (users && users.length > 0) {
-      const user = users[0];
-
-      // Create JWT token (same as original)
+      // Create JWT token
       const token = jwt.sign(
-        {
-          id: user.id,
-          username: user.username,
-          role: user.role,
-          designation: user.designation,
-          firstName: user.firstname,
-          lastName: user.lastname,
-          email: user.email
-        },
+        { id: user.id, username: user.username, role: user.role, designation: user.designation, firstName: user.firstname, lastName: user.lastname, email: user.email },
         SECRET,
         { expiresIn: "1d" }
       );
 
-      // Send as httpOnly cookie (same as original)
+      // Send as httpOnly cookie
       res.cookie("token", token, {
         httpOnly: true,
-        secure: false, // keeping false as per your original
+        secure: false, // true if HTTPS
         sameSite: "lax",
         maxAge: 24 * 60 * 60 * 1000 // 1 day
       });
@@ -258,7 +240,6 @@ app.post("/api/login", async (req, res) => {
     res.status(500).json({ success: false, message: "Error connecting to server" });
   }
 });
-
 app.post("/api/logout", (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
@@ -445,41 +426,22 @@ app.get("/api/summary/:type", async (req, res) => {
     const results = [];
 
     // Build WHERE clause according to selected type
-    let queryFilter = {};
+    let whereClause = "";
     if (type === "forecasted") {
-      queryFilter = { FC: 'Y' };
+      whereClause = " WHERE `FC` = 'Y' ";
     } else if (type === "interchanged") {
-      queryFilter = { IC: 'Y' };
+      whereClause = " WHERE `IC` = 'Y' ";
     } else if (type === "remaining") {
-      queryFilter = {
-        or: [
-          { IC: { is: null } },
-          { IC: { neq: 'Y' } },
-          { FC: { is: null } },
-          { FC: { neq: 'Y' } }
-        ]
-      };
+      whereClause = " WHERE (`IC` IS NULL OR `IC` <> 'Y') AND (`FC` IS NULL OR `FC` <> 'Y') ";
     }
-    // For "master", queryFilter remains empty
+    // For "master", whereClause remains empty
 
     for (const [src, dest] of routePairs) {
-      // Query source table
-      const { data: srcData, error: srcError } = await supabase
-        .from(src)
-        .select('*')
-        .match(queryFilter);
+      const [rowsSrc] = await db.query(`SELECT * FROM \`${src}\` ${whereClause}`);
+      results.push({ table: src, data: rowsSrc });
 
-      if (srcError) throw srcError;
-      results.push({ table: src, data: srcData });
-
-      // Query destination table
-      const { data: destData, error: destError } = await supabase
-        .from(dest)
-        .select('*')
-        .match(queryFilter);
-
-      if (destError) throw destError;
-      results.push({ table: dest, data: destData });
+      const [rowsDest] = await db.query(`SELECT * FROM \`${dest}\` ${whereClause}`);
+      results.push({ table: dest, data: rowsDest });
     }
 
     return res.json({ success: true, data: results });
@@ -502,6 +464,7 @@ app.get("/api/get-user-and-role", authenticateUser, (req, res) => {
 
 // Add this endpoint to your server.js
 app.get("/api/forecast-vs-actual", async (req, res) => {
+  // Get all table names dynamically or use your predefined list
   const tables = [
     "dd-pune", "gtl-wadi", "hg-ubl", "ltrr-sc",
     "mrj-pune", "pune-dd", "pune-mrj", "sc-ltrr",
@@ -518,41 +481,29 @@ app.get("/api/forecast-vs-actual", async (req, res) => {
     };
 
     for (const table of tables) {
-      // First get all relevant data from the table
-      const { data: rows, error } = await supabase
-        .from(table)
-        .select('ARRIVAL, FC, IC');
+      const [rows] = await db.query(`
+    SELECT 
+      CASE 
+        WHEN HOUR(\`ARRIVAL\`) BETWEEN 6 AND 11 THEN 'Morning'
+        WHEN HOUR(\`ARRIVAL\`) BETWEEN 12 AND 17 THEN 'Afternoon'
+        WHEN HOUR(\`ARRIVAL\`) BETWEEN 18 AND 23 THEN 'Evening'
+        ELSE 'Night'
+      END AS time_period,
+      COUNT(CASE WHEN FC = 'Y' THEN 1 END) AS forecasted,
+      COUNT(CASE WHEN IC = 'Y' THEN 1 END) AS actual
+    FROM \`${table}\`
+    GROUP BY time_period
+    ORDER BY FIELD(time_period, 'Morning', 'Afternoon', 'Evening', 'Night');
+  `);
 
-      if (error) throw error;
-
-      // Process rows in JavaScript instead of SQL
-      const timePeriods = rows.reduce((acc, row) => {
-        const hour = new Date(row.ARRIVAL).getHours();
-        let period;
-
-        if (hour >= 6 && hour <= 11) period = 'Morning';
-        else if (hour >= 12 && hour <= 17) period = 'Afternoon';
-        else if (hour >= 18 && hour <= 23) period = 'Evening';
-        else period = 'Night';
-
-        if (!acc[period]) {
-          acc[period] = { forecasted: 0, actual: 0 };
-        }
-
-        if (row.FC === 'Y') acc[period].forecasted++;
-        if (row.IC === 'Y') acc[period].actual++;
-
-        return acc;
-      }, {});
-
-      // Aggregate results
-      Object.entries(timePeriods).forEach(([period, counts]) => {
-        results[period].forecasted += counts.forecasted;
-        results[period].actual += counts.actual;
+      // Aggregate results across all tables
+      rows.forEach(row => {
+        results[row.time_period].forecasted += row.forecasted;
+        results[row.time_period].actual += row.actual;
       });
     }
 
-    // Convert to array format for frontend (same as original)
+    // Convert to array format for frontend
     const chartData = Object.entries(results).map(([period, counts]) => ({
       period,
       forecasted: counts.forecasted,
@@ -591,22 +542,17 @@ app.get("/api/wagon-summary", async (req, res) => {
     let summary = [];
 
     for (let tableName of tables) {
-      // Get loaded wagons count
-      const { count: loadedWagons } = await supabase
-        .from(tableName)
-        .select('WAGON', { count: 'exact', head: true })
-        .eq('ISLOADED', 'L');
-
-      // Get empty wagons count
-      const { count: emptyWagons } = await supabase
-        .from(tableName)
-        .select('WAGON', { count: 'exact', head: true })
-        .eq('ISLOADED', 'E');
+      const [result] = await db.query(
+        `SELECT 
+            SUM(CASE WHEN ISLOADED = 'L' THEN WAGON ELSE 0 END) AS loaded_wagons,
+            SUM(CASE WHEN ISLOADED = 'E' THEN WAGON ELSE 0 END) AS empty_wagons
+         FROM \`${tableName}\``
+      );
 
       summary.push({
         route: tableName.toUpperCase(),
-        loaded_wagons: loadedWagons || 0,
-        empty_wagons: emptyWagons || 0
+        loaded_wagons: result[0].loaded_wagons || 0,
+        empty_wagons: result[0].empty_wagons || 0
       });
     }
 
@@ -621,7 +567,7 @@ app.get("/api/wagon-summary", async (req, res) => {
 
 
 app.get("/api/ic-fc-stats", async (req, res) => {
-  // Define table pairs with direction indicators (same as original)
+  // Define table pairs with direction indicators
   const tablePairs = [
     { src: "SC", dest: "WADI" },
     { src: "GTL", dest: "WADI" },
@@ -640,26 +586,20 @@ app.get("/api/ic-fc-stats", async (req, res) => {
       const reverseTable = `${pair.dest}-${pair.src}`;
 
       // Process forward direction (SRC-DEST)
-      const { count: forwardIC } = await supabase
-        .from(forwardTable)
-        .select('*', { count: 'exact', head: true })
-        .eq('IC', 'Y');
-
-      const { count: forwardFC } = await supabase
-        .from(forwardTable)
-        .select('*', { count: 'exact', head: true })
-        .eq('FC', 'Y');
+      const [forwardIC] = await db.query(
+        `SELECT COUNT(*) AS count FROM \`${forwardTable}\` WHERE IC = 'Y'`
+      );
+      const [forwardFC] = await db.query(
+        `SELECT COUNT(*) AS count FROM \`${forwardTable}\` WHERE FC = 'Y'`
+      );
 
       // Process reverse direction (DEST-SRC)
-      const { count: reverseIC } = await supabase
-        .from(reverseTable)
-        .select('*', { count: 'exact', head: true })
-        .eq('IC', 'Y');
-
-      const { count: reverseFC } = await supabase
-        .from(reverseTable)
-        .select('*', { count: 'exact', head: true })
-        .eq('FC', 'Y');
+      const [reverseIC] = await db.query(
+        `SELECT COUNT(*) AS count FROM \`${reverseTable}\` WHERE IC = 'Y'`
+      );
+      const [reverseFC] = await db.query(
+        `SELECT COUNT(*) AS count FROM \`${reverseTable}\` WHERE FC = 'Y'`
+      );
 
       results.push({
         pair: `${pair.src}-${pair.dest}`,
@@ -667,14 +607,14 @@ app.get("/api/ic-fc-stats", async (req, res) => {
           {
             direction: 'forward',
             tableName: forwardTable,
-            IC: forwardIC || 0,  // Ensure we return 0 instead of null
-            FC: forwardFC || 0
+            IC: forwardIC[0].count,
+            FC: forwardFC[0].count
           },
           {
             direction: 'reverse',
             tableName: reverseTable,
-            IC: reverseIC || 0,
-            FC: reverseFC || 0
+            IC: reverseIC[0].count,
+            FC: reverseFC[0].count
           }
         ]
       });
@@ -693,7 +633,10 @@ app.get("/api/ic-fc-stats", async (req, res) => {
     });
   }
 });
+
+
 app.get("/api/dashboard-stats", async (req, res) => {
+  // All tables to check
   const tables = [
     "SC-WADI", "WADI-SC",
     "GTL-WADI", "WADI-GTL",
@@ -711,31 +654,25 @@ app.get("/api/dashboard-stats", async (req, res) => {
     const perTableCounts = [];
 
     for (const table of tables) {
-      // Get IC count
-      const { count: icCount } = await supabase
-        .from(table)
-        .select('*', { count: 'exact', head: true })
-        .eq('IC', 'Y');
+      const [countRows] = await db.query(
+        `SELECT COUNT(*) AS cnt FROM \`${table}\` WHERE IC = 'Y'`
+      );
 
-      // Get FC count
-      const { count: fcCount } = await supabase
-        .from(table)
-        .select('*', { count: 'exact', head: true })
-        .eq('FC', 'Y');
+      const [fcRows] = await db.query(
+        `SELECT COUNT(*) AS cnt FROM \`${table}\` WHERE FC = 'Y'`
+      );
 
-      // Get total count
-      const { count: totalCount } = await supabase
-        .from(table)
-        .select('*', { count: 'exact', head: true });
+      const [totalRows] = await db.query(
+        `SELECT COUNT(*) AS cnt FROM \`${table}\``
+      );
 
-      perTableCounts.push({
-        table,
-        count: icCount || 0
-      });
+      const count = countRows[0].cnt;
+      perTableCounts.push({ table, count });
+      totalICCount += count;
+      totalFCCount += fcRows[0].cnt;
 
-      totalICCount += icCount || 0;
-      totalFCCount += fcCount || 0;
-      totalTrainCount += totalCount || 0;
+      // Each row represents a train, so total rows is total trains
+      totalTrainCount += totalRows[0].cnt;
     }
 
     return res.json({
@@ -744,6 +681,7 @@ app.get("/api/dashboard-stats", async (req, res) => {
         totalTrains: totalTrainCount,
         totalInterchange: totalICCount,
         totalForecast: totalFCCount,
+        // You might want to add more stats here if needed
       },
       breakdown: perTableCounts
     });
@@ -761,20 +699,12 @@ app.get("/api/route/:tableName", async (req, res) => {
   try {
     const tableName = req.params.tableName;
 
-    // Make sure to define allowedTables somewhere in your code
-    // Example: const allowedTables = ["SC-WADI", "WADI-SC", ...];
     if (!allowedTables.includes(tableName)) {
       return res.status(400).json({ success: false, message: "Invalid route" });
     }
 
-    // Supabase equivalent query
-    const { data, error } = await supabase
-      .from(tableName)
-      .select('*');
-
-    if (error) throw error;
-
-    res.json({ success: true, data });
+    const [rows] = await db.query(`SELECT * FROM \`${tableName}\``);
+    res.json({ success: true, data: rows });
 
   } catch (error) {
     console.error("Error fetching route data:", error);
@@ -1010,58 +940,55 @@ async function updateRouteTable(tableName, rakes) {
 
   try {
     // 🚨 Clear the table before inserting new data
-    const { error: truncateError } = await supabase
-      .from(tableName)
-      .delete()
-      .neq('id', 0); // Delete all records (assuming 'id' exists)
-
-    if (truncateError) throw truncateError;
+    await db.query(`TRUNCATE TABLE \`${tableName}\``);
     console.log(`Truncated table ${tableName}`);
 
-    // Prepare data for insertion
-    const records = rakes.map(rake => ({
-      "RAKE ID": rake.rakeId,
-      "FROM": rake.from,
-      "TO": rake.to,
-      "TYPE": rake.type,
-      "ISLOADED": rake.isLoaded,
-      "LOCO1": rake.loco1,
-      "LOCO2": rake.loco2,
-      "BASE": rake.base,
-      "DUE DATE": rake.dueDate,
-      "WAGON": rake.wagon,
-      "BPC_STN": rake.bpcStn,
-      "BPC_DATE": rake.bpcDate,
-      "BPC_TYPE": rake.bpcType,
-      "ARRIVAL": rake.arrival,
-      "STTS": rake.stts,
-      "LOC": rake.loc,
-      "IC": rake.ic,
-      "FC": rake.fc
-    }));
+    const columns = [
+      "`RAKE ID`", "`FROM`", "`TO`", "`TYPE`", "`ISLOADED`",
+      "`LOCO1`", "`LOCO2`", "`BASE`", "`DUE DATE`", "`WAGON`",
+      "`BPC_STN`", "`BPC_DATE`", "`BPC_TYPE`", "`ARRIVAL`",
+      "`STTS`", "`LOC`", "`IC`", "`FC`"
+    ];
 
-    // Insert in batches (Supabase has a limit per request)
-    const BATCH_SIZE = 100;
-    let insertedCount = 0;
+    const values = rakes.map(rake => [
+      rake.rakeId,
+      rake.from,
+      rake.to,
+      rake.type,
+      rake.isLoaded,
+      rake.loco1,
+      rake.loco2,
+      rake.base,
+      rake.dueDate,
+      rake.wagon,
+      rake.bpcStn,
+      rake.bpcDate,
+      rake.bpcType,
+      rake.arrival,
+      rake.stts,
+      rake.loc,
+      rake.ic,
+      rake.fc
+    ]);
 
-    for (let i = 0; i < records.length; i += BATCH_SIZE) {
-      const batch = records.slice(i, i + BATCH_SIZE);
-      const { data, error } = await supabase
-        .from(tableName)
-        .insert(batch);
+    const placeholders = columns.map(() => "?").join(", ");
+    const query = `
+      INSERT IGNORE INTO \`${tableName}\` 
+        (${columns.join(", ")})
+      VALUES ${values.map(() => `(${placeholders})`).join(", ")}
+    `;
 
-      if (error) throw error;
-      insertedCount += batch.length;
-    }
+    const flatValues = values.flat();
+    await db.query(query, flatValues);
+    console.log(`Inserted ${rakes.length} rakes into ${tableName}`);
 
-    console.log(`Inserted ${insertedCount} rakes into ${tableName}`);
-    return insertedCount;
-
+    return rakes.length;
   } catch (error) {
     console.error(`Error updating ${tableName}:`, error);
     throw new Error(`Database update failed for ${tableName}`);
   }
 }
+
 
 // Health check and server start
 app.get("/health", (req, res) => {

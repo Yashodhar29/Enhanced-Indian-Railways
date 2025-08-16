@@ -1,9 +1,6 @@
 import Chart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
 import { useState, useEffect } from "react";
-import { Dropdown } from "../ui/dropdown/Dropdown";
-import { DropdownItem } from "../ui/dropdown/DropdownItem";
-import { MoreDotIcon } from "../../icons";
 
 interface PieData {
   name: string;
@@ -15,8 +12,27 @@ export default function MonthlyTarget() {
   const [icData, setIcData] = useState<PieData[]>([]);
   const [wagonData, setWagonData] = useState<PieData[]>([]);
   const [loading, setLoading] = useState(true);
+  const isDark = useDarkMode();
 
   // Fetch Wagon stats
+
+  function useDarkMode() {
+    const [isDark, setIsDark] = useState(false);
+
+    useEffect(() => {
+      const checkDark = () =>
+        setIsDark(document.documentElement.classList.contains("dark"));
+
+      checkDark();
+      const observer = new MutationObserver(checkDark);
+      observer.observe(document.documentElement, { attributes: true });
+
+      return () => observer.disconnect();
+    }, []);
+
+    return isDark;
+  }
+
   useEffect(() => {
     fetch("http://localhost:3002/api/wagon-totals", { credentials: "include" })
       .then(res => {
@@ -48,11 +64,11 @@ export default function MonthlyTarget() {
     chart: {
       type: 'pie',
       fontFamily: "Outfit, sans-serif",
-      foreColor: '#ffffff'
     },
     labels: icData.map(item => item.name),
     colors: ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A4DE6C', '#D0ED57'],
     tooltip: {
+      theme: 'light',
       style: {
         fontSize: '12px',
         fontFamily: 'Outfit, sans-serif',
@@ -94,6 +110,7 @@ export default function MonthlyTarget() {
     labels: wagonData.map(item => item.name),
     colors: ['#FF4560', '#775DD0', '#00E396', '#FEB019', '#546E7A', '#26a69a'],
     tooltip: {
+      theme: 'light',
       style: {
         fontSize: '12px',
         fontFamily: 'Outfit, sans-serif',
@@ -145,8 +162,8 @@ export default function MonthlyTarget() {
         {/* Pie Charts Section - Now in a column */}
         <div className="flex flex-col gap-8 mt-6">
           {/* IC Stats Chart */}
-          <div className="bg-white p-4 rounded-lg shadow">
-            <h4 className="text-md font-semibold text-center mb-4">IC Stats</h4>
+          <div className="bg-white p-4 rounded-lg shadow dark:border-gray-800 dark:bg-white/[0.03]">
+            <h4 className="text-md font-semibold text-center text-gray-800 dark:text-white/90 mb-4">IC Stats</h4>
             {icData.length > 0 ? (
               <Chart
                 options={icPieOptions}
@@ -160,8 +177,8 @@ export default function MonthlyTarget() {
           </div>
 
           {/* Wagon Stats Chart */}
-          <div className="bg-white p-4 rounded-lg shadow">
-            <h4 className="text-md font-semibold text-center mb-4">Wagon Stats</h4>
+          <div className="bg-white p-4 rounded-lg shadow dark:border-gray-800 dark:bg-white/[0.03]">
+            <h4 className="text-md font-semibold text-center text-gray-800 dark:text-white/90 mb-4">Wagon Stats</h4>
             {wagonData.length > 0 ? (
               <Chart
                 options={wagonPieOptions}

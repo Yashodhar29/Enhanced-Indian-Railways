@@ -9,10 +9,15 @@ export default defineConfig({
     svgr({
       svgrOptions: {
         icon: true,
-        // This will transform your SVG to a React component
+        // Transform your SVG to a React component
         exportType: "named",
         namedExport: "ReactComponent",
       },
     }),
   ],
+  server: {
+    host: "0.0.0.0",       // Listen on all network interfaces
+    port: 5173,            // Optional, choose your port
+    allowedHosts: ["all"], // Allow all hosts (LAN/public/ngrok)
+  },
 });
