@@ -1,8 +1,3 @@
-import { useModal } from "../../hooks/useModal";
-import { Modal } from "../ui/modal";
-import Button from "../ui/button/Button";
-import Input from "../form/input/InputField";
-import Label from "../form/Label";
 import { useState, useEffect } from "react";
 import axios from 'axios'
 export default function UserInfoCard() {
@@ -14,7 +9,7 @@ export default function UserInfoCard() {
 
 
   useEffect(() => {
-    axios.get("http://localhost:3002/api/get-user-and-role", {
+    axios.get("https://enhanced-indian-railways.onrender.com:3002et-user-and-role", {
       withCredentials: true
     })
       .then(response => {

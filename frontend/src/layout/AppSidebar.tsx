@@ -3,7 +3,6 @@ import { Link, useLocation } from "react-router";
 import axios from 'axios';
 // Assume these icons are imported from an icon library
 import {
-  BoxCubeIcon,
   ChevronDownIcon,
   GridIcon,
   HorizontaLDots,
@@ -73,7 +72,7 @@ const AppSidebar: React.FC = () => {
 
 
   useEffect(() => {
-    axios.get("http://localhost:3002/api/get-user-and-role", {
+    axios.get("https://enhanced-indian-railways.onrender.com:3002/get-user-and-role", {
       withCredentials: true
     })
       .then(response => {

@@ -7,7 +7,7 @@ import React from 'react';
 import axios from 'axios';
 
 export default function UserMetaCard() {
-  const { isOpen, openModal, closeModal } = useModal();
+  const { isOpen, closeModal } = useModal();
   const handleSave = () => {
     // Handle save logic here
     console.log("Saving changes...");
@@ -19,7 +19,7 @@ export default function UserMetaCard() {
   const [userDesignation, setUserDesignation] = React.useState<string>();
 
   React.useEffect(() => {
-    axios.get("http://localhost:3002/api/get-user-and-role", {
+    axios.get("https://enhanced-indian-railways.onrender.com:3002/get-user-and-role", {
       withCredentials: true
     })
       .then(response => {
