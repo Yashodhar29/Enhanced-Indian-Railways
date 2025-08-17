@@ -1,4 +1,5 @@
 import mysql from "mysql2/promise";
+import NodeCache from 'node-cache';
 import express from "express";
 import cors from "cors";
 import multer from "multer";
@@ -55,123 +56,20 @@ async function connectDB() {
   try {
     supabase = await createClient(supabaseUrl, supabaseAnonKey)
     // db = await postgres(connectionString)
-    console.log("Database connected successfully");
+    console.log("database connected successfully")
   } catch (error) {
     console.error("Database connection error:", error);
     process.exit(1);
   }
 }
-const DSL_PREFIXES = ["11", "12", "14", "70", "40"];
 
 function isDSL(loco) {
   if (!loco) return false;
-  return DSL_PREFIXES.some(prefix => loco.startsWith(prefix));
+  const prefixes = ["11", "12", "13", "14", "49", "69", "70"];
+  return prefixes.some(prefix => loco.startsWith(prefix));
 }
 
-
-
 app.get("/analysis/locos", async (req, res) => {
-  try {
-    const results = [];
-
-    for (const table of allowedTables) {
-      // Get LOCO1 and LOCO2 columns from this table
-      const { data: rows, error } = await supabase
-        .from(table) // table name directly, no backticks
-        .select('loco1, loco2');
-
-      if (error) {
-        // console.error(`Error fetching table ${table}:`, error);
-        continue; // skip to next table if query fails
-      }
-
-      let dslTotal = 0;
-      let acTotal = 0;
-      let dslMulti = 0;
-      let acMulti = 0;
-
-      for (const row of rows) {
-        // LOCO1 totals
-        if (isDSL(row.loco1)) {
-          dslTotal++;
-        } else {
-          acTotal++;
-        }
-
-        // LOCO2 multi counts
-        if (row.loco2 && row.loco2.trim() !== "") {
-          if (isDSL(row.loco2)) {
-            dslMulti++;
-          } else {
-            acMulti++;
-          }
-        }
-      }
-
-      results.push({
-        route: table,
-        DSL: { total: dslTotal, multi: dslMulti },
-        AC: { total: acTotal, multi: acMulti }
-      });
-    }
-
-    res.json(results);
-  } catch (err) {
-    // console.error(err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-
-app.get("/api/wagon-totals", async (req, res) => {
-  try {
-    const tables = [
-      "sc_wadi", "wadi_sc", "gtl_wadi", "wadi_gtl", "ubl_hg", "hg_ubl",
-      "ltrr_sc", "sc_ltrr", "pune_dd", "dd_pune", "mrj_pune", "pune_mrj",
-      "sc_tjsp", "tjsp_sc"
-    ];
-
-    let totalLoaded = 0;
-    let totalEmpty = 0;
-
-    for (let tableName of tables) {
-      const { data, error } = await supabase
-        .from(tableName) // table names are fine as strings
-        .select(`
-          loaded_wagons:wagon,
-          isloaded:isloaded
-        `);
-
-      if (error) {
-        // console.error(`Error fetching ${tableName}:`, error);
-        continue; // skip this table if there's a problem
-      }
-
-      // Summation logic in JS instead of SQL
-      for (const row of data) {
-        if (row.isloaded === 'L') {
-          totalLoaded += row.loaded_wagons || 0;
-        } else if (row.isloaded === 'E') {
-          totalEmpty += row.loaded_wagons || 0;
-        }
-      }
-    }
-
-    const resultData = [
-      { name: "Loaded Wagons", value: totalLoaded },
-      { name: "Empty Wagons", value: totalEmpty }
-    ];
-
-    // console.log("Wagon totals:", resultData);
-
-    res.json({ success: true, data: resultData });
-  } catch (err) {
-    // console.error("Error fetching wagon totals:", err);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-});
-
-app.get("/api/ic-stats", async (req, res) => {
   const tables = [
     "sc_wadi", "wadi_sc", "gtl_wadi", "wadi_gtl", "ubl_hg", "hg_ubl",
     "ltrr_sc", "sc_ltrr", "pune_dd", "dd_pune", "mrj_pune", "pune_mrj",
@@ -179,34 +77,190 @@ app.get("/api/ic-stats", async (req, res) => {
   ];
 
   try {
+    const cacheKey = 'locos_stats';
+    const cachedData = cache.get(cacheKey);
+    if (cachedData) return res.json(cachedData);
+
+    const { data, error } = await supabase
+      .from('analysis_locos')
+      .select('route, loco1, loco2');
+
+    if (error) throw error;
+
+    const tableCounts = {};
+    tables.forEach(table => {
+      tableCounts[table] = { dslTotal: 0, acTotal: 0, dslMulti: 0, acMulti: 0 };
+    });
+
+    (data || []).forEach(row => {
+      if (!tableCounts[row.route]) return;
+
+      const l1 = row.loco1?.trim();
+      const l2 = row.loco2?.trim();
+
+      // count loco1
+      if (l1) {
+        if (isDSL(l1)) {
+          tableCounts[row.route].dslTotal++;
+        } else {
+          tableCounts[row.route].acTotal++;
+        }
+      }
+
+      // count loco2
+      if (l2) {
+        if (isDSL(l2)) {
+          tableCounts[row.route].dslTotal++;   // add to total
+          tableCounts[row.route].dslMulti++;   // add to multi
+        } else {
+          tableCounts[row.route].acTotal++;
+          tableCounts[row.route].acMulti++;
+        }
+      }
+    });
+
+    const results = tables.map(table => ({
+      route: table,
+      DSL: {
+        total: tableCounts[table].dslTotal,
+        multi: tableCounts[table].dslMulti
+      },
+      AC: {
+        total: tableCounts[table].acTotal,
+        multi: tableCounts[table].acMulti
+      }
+    }));
+
+    cache.set(cacheKey, results);
+    res.json(results);
+  } catch (err) {
+    console.error("Error in /analysis/locos:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/api/wagon-totals", async (req, res) => {
+  try {
+    // Check cache first
+    const cacheKey = 'wagon_totals';
+    const cachedData = cache.get(cacheKey);
+    if (cachedData) {
+      return res.json(cachedData);
+    }
+
+
+    // Query the view
+    const { data, error } = await supabase
+      .from('wagon_totals_data')
+      .select('wagon, isloaded');
+
+    if (error) {
+      console.error('Error fetching view:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      throw error;
+    }
+
+    // Initialize totals
+    let totalLoaded = 0;
+    let totalEmpty = 0;
+
+    // Process rows
+    (data || []).forEach(row => {
+      if (row.isloaded === 'L') {
+        totalLoaded += row.wagon || 0;
+      } else if (row.isloaded === 'E') {
+        totalEmpty += row.wagon || 0;
+      }
+    });
+
+    const resultData = [
+      { name: "Loaded Wagons", value: totalLoaded },
+      { name: "Empty Wagons", value: totalEmpty }
+    ];
+
+
+    const response = { success: true, data: resultData };
+
+    // Cache the response
+    cache.set(cacheKey, response);
+
+    res.json(response);
+  } catch (err) {
+    console.error("Error in /api/wagon-totals:", {
+      message: err.message,
+      stack: err.stack,
+      details: err.details || "No additional details"
+    });
+    res.status(500).json({
+      success: false,
+      message: "Server error fetching wagon totals"
+    });
+  }
+});
+
+app.get("/api/ic-stats", async (req, res) => {
+  try {
+    // Check cache first
+    const cacheKey = 'ic_stats';
+    const cachedData = cache.get(cacheKey);
+    if (cachedData) {
+      return res.json(cachedData);
+    }
+
+
+    // Query the view
+    const { data, error } = await supabase
+      .from('ic_stats_data')
+      .select('ic');
+
+    if (error) {
+      console.error('Error fetching view:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      throw error;
+    }
+
+
+    // Count IC and total trains
     let totalIC = 0;
     let totalTrains = 0;
 
-    for (const table of tables) {
-      // Count IC = 'Y' records
-      const { count: icCount } = await supabase
-        .from(table)
-        .select('*', { count: 'exact', head: true })
-        .eq('ic', 'Y');
+    (data || []).forEach(row => {
+      if (row.ic === 'Y') {
+        totalIC++;
+      }
+      totalTrains++;
+    });
 
-      // Count all records
-      const { count: totalCount } = await supabase
-        .from(table)
-        .select('*', { count: 'exact', head: true });
-
-      totalIC += icCount || 0;
-      totalTrains += totalCount || 0;
-    }
-
-    const data = [
+    const dataResponse = [
       { name: "Interchanged Trains", value: totalIC },
       { name: "Non-Interchanged Trains", value: totalTrains - totalIC }
     ];
 
-    res.json({ success: true, data });
+
+    const response = { success: true, data: dataResponse };
+
+    // Cache the response
+    cache.set(cacheKey, response);
+
+    res.json(response);
   } catch (err) {
-    // console.error("Error in /api/ic-stats:", err);
-    res.status(500).json({ success: false, message: "Server error fetching IC stats" });
+    console.error("Error in /api/ic-stats:", {
+      message: err.message,
+      stack: err.stack,
+      details: err.details || "No additional details"
+    });
+    res.status(500).json({
+      success: false,
+      message: "Server error fetching IC stats"
+    });
   }
 });
 
@@ -221,7 +275,6 @@ app.post("/api/login", async (req, res) => {
       .eq('username', username.trim())
       .eq('password', password);
 
-    // console.log(data)
     if (error) throw error;
 
     if (users && users.length > 0) {
@@ -249,14 +302,12 @@ app.post("/api/login", async (req, res) => {
         sameSite: "lax",
         maxAge: 24 * 60 * 60 * 1000 // 1 day
       });
-      // console.log('success')
       return res.json({ success: true });
     } else {
       f
       return res.json({ success: false, message: "Invalid username or password" });
     }
   } catch (error) {
-    // console.error("Login error:", error);
     res.status(500).json({ success: false, message: "Error connecting to server" });
   }
 });
@@ -447,6 +498,45 @@ app.get("/api/get-user-and-role", authenticateUser, (req, res) => {
   });
 });
 
+app.post("/api/add-user", async (req, res) => {
+  try {
+    const { username, password, email, role, designation, firstName, lastName } = req.body;
+
+    if (!username || !password || !email || !role) {
+      return res.status(400).json({ success: false, message: "Missing required fields" });
+    }
+
+    // Insert directly into Supabase (password stored as plain text)
+    const { data, error } = await supabase
+      .from("users")
+      .insert([
+        {
+          username,
+          password,       // ⚠️ stored as plain text
+          email,
+          role,
+          designation,
+          firstname: firstName, // use your actual DB column names
+          lastname: lastName,
+        }
+      ])
+      .select();
+
+    if (error) {
+      console.error("Supabase insert error:", error);
+      if (error && error.code === "23505") {
+        return res.status(400).json({ success: false, message: "Username already exists" });
+      }
+      return res.status(500).json({ success: false, message: "Database Insertion Failed", error });
+    }
+
+    return res.status(201).json({ success: true, user: data[0] });
+  } catch (err) {
+    console.error("Server error:", err);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
 // Add this endpoint to your server.js
 app.get("/api/forecast-vs-actual", async (req, res) => {
   const tables = [
@@ -464,50 +554,51 @@ app.get("/api/forecast-vs-actual", async (req, res) => {
       Night: { forecasted: 0, actual: 0 }
     };
 
-    for (const table of tables) {
-      // First get all relevant data from the table
-      const { data: rows, error } = await supabase
-        .from(table)
-        .select('arrival, fc, ic');
+    // First get all relevant data from the table
+    const { data: rows, error } = await supabase
+      .from('forecast_data')
+      .select('arrival, fc, ic')
+      .not('arrival', 'is', null);
+    if (error) throw error;
+    const allRows = rows || [];
+    // Process allRows as above
+    if (error) throw error;
 
-      if (error) throw error;
-
-      // Process rows in JavaScript instead of SQL
-      const timePeriods = rows.reduce((acc, row) => {
-        if (!row.arrival || typeof row.arrival !== 'string') {
-          console.warn(`Skipping row with invalid arrival: ${row.arrival}`);
-          return acc;
-        }
-        // Ensure arrival is a valid HH:MM:SS format
-        const timeMatch = row.arrival.match(/^(\d{2}):(\d{2}):(\d{2})$/);
-        if (!timeMatch) {
-          console.warn(`Invalid time format for arrival: ${row.arrival}`);
-          return acc;
-        }
-        const hour = parseInt(timeMatch[1], 10);
-        let period;
-
-        if (hour >= 6 && hour <= 11) period = 'Morning';
-        else if (hour >= 12 && hour <= 17) period = 'Afternoon';
-        else if (hour >= 18 && hour <= 23) period = 'Evening';
-        else period = 'Night';
-
-        if (!acc[period]) {
-          acc[period] = { forecasted: 0, actual: 0 };
-        }
-
-        if (row.fc === 'Y') acc[period].forecasted++;
-        if (row.ic === 'Y') acc[period].actual++;
-
+    // Process rows in JavaScript instead of SQL
+    const timePeriods = rows.reduce((acc, row) => {
+      if (!row.arrival || typeof row.arrival !== 'string') {
+        console.warn(`Skipping row with invalid arrival: ${row.arrival}`);
         return acc;
-      }, {});
+      }
+      // Ensure arrival is a valid HH:MM:SS format
+      const timeMatch = row.arrival.match(/^(\d{2}):(\d{2}):(\d{2})$/);
+      if (!timeMatch) {
+        console.warn(`Invalid time format for arrival: ${row.arrival}`);
+        return acc;
+      }
+      const hour = parseInt(timeMatch[1], 10);
+      let period;
 
-      // Aggregate results
-      Object.entries(timePeriods).forEach(([period, counts]) => {
-        results[period].forecasted += counts.forecasted;
-        results[period].actual += counts.actual;
-      });
-    }
+      if (hour >= 6 && hour <= 11) period = 'Morning';
+      else if (hour >= 12 && hour <= 17) period = 'Afternoon';
+      else if (hour >= 18 && hour <= 23) period = 'Evening';
+      else period = 'Night';
+
+      if (!acc[period]) {
+        acc[period] = { forecasted: 0, actual: 0 };
+      }
+
+      if (row.fc === 'Y') acc[period].forecasted++;
+      if (row.ic === 'Y') acc[period].actual++;
+
+      return acc;
+    }, {});
+
+    // Aggregate results
+    Object.entries(timePeriods).forEach(([period, counts]) => {
+      results[period].forecasted += counts.forecasted;
+      results[period].actual += counts.actual;
+    });
 
     // Convert to array format for frontend (same as original)
     const chartData = Object.entries(results).map(([period, counts]) => ({
@@ -534,52 +625,83 @@ app.get("/api/forecast-vs-actual", async (req, res) => {
 });
 
 app.get("/api/wagon-summary", async (req, res) => {
+  const tables = [
+    "sc_wadi", "wadi_sc", "gtl_wadi", "wadi_gtl", "ubl_hg", "hg_ubl",
+    "ltrr_sc", "sc_ltrr", "pune_dd", "dd_pune", "mrj_pune", "pune_mrj",
+    "sc_tjsp", "tjsp_sc"
+  ];
+
   try {
-    const tables = [
-      "sc_wadi", "wadi_sc", "gtl_wadi", "wadi_gtl", "ubl_hg", "hg_ubl",
-      "ltrr_sc", "sc_ltrr", "pune_dd", "dd_pune", "mrj_pune", "pune_mrj",
-      "sc_tjsp", "tjsp_sc"
-    ];
-
-
-
-    let summary = [];
-
-    for (let tableName of tables) {
-      // Get loaded wagons count
-      const { count: loadedWagons, error: loadedError } = await supabase
-        .from(tableName)
-        .select("wagon", { count: "exact", head: true })
-        .eq("isloaded", "L");
-
-      if (loadedError) throw loadedError;
-
-      const { count: emptyWagons, error: emptyError } = await supabase
-        .from(tableName)
-        .select("wagon", { count: "exact", head: true })
-        .eq("isloaded", "E");
-
-      if (emptyError) throw emptyError;
-
-      summary.push({
-        route: tableName.toUpperCase(),
-        loaded_wagons: loadedWagons || 0,
-        empty_wagons: emptyWagons || 0
-      });
+    // Check cache first
+    const cacheKey = 'wagon_summary';
+    const cachedData = cache.get(cacheKey);
+    if (cachedData) {
+      return res.json(cachedData);
     }
 
-    summary.sort((a, b) => a.route.localeCompare(b.route));
-    res.json({ success: true, data: summary });
 
+    // Query the view
+    const { data, error } = await supabase
+      .from('wagon_summary_data')
+      .select('route, isloaded');
+
+    if (error) {
+      console.error('Error fetching view:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      throw error;
+    }
+
+
+    // Initialize counts for each table
+    const tableCounts = {};
+    tables.forEach(table => {
+      tableCounts[table] = { loaded_wagons: 0, empty_wagons: 0 };
+    });
+
+    // Process rows
+    (data || []).forEach(row => {
+      if (tableCounts[row.route]) {
+        if (row.isloaded === 'L') {
+          tableCounts[row.route].loaded_wagons++;
+        } else if (row.isloaded === 'E') {
+          tableCounts[row.route].empty_wagons++;
+        }
+      }
+    });
+
+    // Build summary
+    const summary = tables.map(table => ({
+      route: table.toUpperCase(),
+      loaded_wagons: tableCounts[table].loaded_wagons,
+      empty_wagons: tableCounts[table].empty_wagons
+    })).sort((a, b) => a.route.localeCompare(b.route));
+
+
+    const response = { success: true, data: summary };
+
+    // Cache the response
+    cache.set(cacheKey, response);
+
+    res.json(response);
   } catch (err) {
-    console.error("Error fetching wagon summary:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("Error in /api/wagon-summary:", {
+      message: err.message,
+      stack: err.stack,
+      details: err.details || "No additional details"
+    });
+    res.status(500).json({
+      success: false,
+      message: "Server error fetching wagon summary"
+    });
   }
 });
 
 
 app.get("/api/ic-fc-stats", async (req, res) => {
-  // Define table pairs with direction indicators (same as original)
   const tablePairs = [
     { src: "sc", dest: "wadi" },
     { src: "gtl", dest: "wadi" },
@@ -590,68 +712,93 @@ app.get("/api/ic-fc-stats", async (req, res) => {
     { src: "sc", dest: "tjsp" }
   ];
 
-
   try {
-    const results = [];
+    // Check cache first
+    const cacheKey = 'ic_fc_stats';
+    const cachedData = cache.get(cacheKey);
+    if (cachedData) {
+      return res.json(cachedData);
+    }
 
-    for (const pair of tablePairs) {
+
+    // Query the view
+    const { data, error } = await supabase
+      .from('ic_fc_stats_data')
+      .select('route, ic, fc');
+
+    if (error) {
+      console.error('Error fetching view:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      throw error;
+    }
+
+
+    // Initialize counts for each table
+    const tableCounts = {};
+    tablePairs.forEach(pair => {
       const forwardTable = `${pair.src}_${pair.dest}`;
       const reverseTable = `${pair.dest}_${pair.src}`;
+      tableCounts[forwardTable] = { ic: 0, fc: 0 };
+      tableCounts[reverseTable] = { ic: 0, fc: 0 };
+    });
 
-      // Process forward direction (SRC-DEST)
-      const { count: forwardIC } = await supabase
-        .from(forwardTable)
-        .select('*', { count: 'exact', head: true })
-        .eq('ic', 'Y');
+    // Process rows
+    (data || []).forEach(row => {
+      if (tableCounts[row.route]) {
+        if (row.ic === 'Y') tableCounts[row.route].ic++;
+        if (row.fc === 'Y') tableCounts[row.route].fc++;
+      }
+    });
 
-      const { count: forwardFC } = await supabase
-        .from(forwardTable)
-        .select('*', { count: 'exact', head: true })
-        .eq('fc', 'Y');
-
-      // Process reverse direction (DEST-SRC)
-      const { count: reverseIC } = await supabase
-        .from(reverseTable)
-        .select('*', { count: 'exact', head: true })
-        .eq('ic', 'Y');
-
-      const { count: reverseFC } = await supabase
-        .from(reverseTable)
-        .select('*', { count: 'exact', head: true })
-        .eq('fc', 'Y');
-
-      results.push({
-        pair: `${pair.src}_${pair.dest}`,
+    // Build results
+    const results = tablePairs.map(pair => {
+      const forwardTable = `${pair.src}_${pair.dest}`;
+      const reverseTable = `${pair.dest}_${pair.src}`;
+      return {
+        pair: forwardTable,
         directions: [
           {
             direction: 'forward',
             tableName: forwardTable,
-            IC: forwardIC || 0,  // Ensure we return 0 instead of null
-            FC: forwardFC || 0
+            IC: tableCounts[forwardTable].ic,
+            FC: tableCounts[forwardTable].fc
           },
           {
             direction: 'reverse',
             tableName: reverseTable,
-            IC: reverseIC || 0,
-            FC: reverseFC || 0
+            IC: tableCounts[reverseTable].ic,
+            FC: tableCounts[reverseTable].fc
           }
         ]
-      });
-    }
-
-    return res.json({
-      success: true,
-      data: results
+      };
     });
 
+
+    const response = { success: true, data: results };
+
+    // Cache the response
+    cache.set(cacheKey, response);
+
+    res.json(response);
   } catch (err) {
-    console.error("Error in /api/ic-fc-stats ->", err);
-    return res.status(500).json({
+    console.error("Error in /api/ic-fc-stats:", {
+      message: err.message,
+      stack: err.stack,
+      details: err.details || "No additional details"
+    });
+    res.status(500).json({
       success: false,
       message: "Server error fetching IC/FC stats"
     });
   }
 });
+
+const cache = new NodeCache({ stdTTL: 300 }); // Cache for 5 minutes
+
 app.get("/api/dashboard-stats", async (req, res) => {
   const tables = [
     "sc_wadi", "wadi_sc", "gtl_wadi", "wadi_gtl", "ubl_hg", "hg_ubl",
@@ -660,52 +807,81 @@ app.get("/api/dashboard-stats", async (req, res) => {
   ];
 
   try {
+    // Check cache first
+    const cacheKey = 'dashboard_stats';
+    const cachedData = cache.get(cacheKey);
+    if (cachedData) {
+      return res.json(cachedData);
+    }
+
+
+    // Query the view
+    const { data, error } = await supabase
+      .from('dashboard_stats_data')
+      .select('route, ic, fc');
+
+    if (error) {
+      console.error('Error fetching view:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      throw error;
+    }
+
+
+    // Initialize aggregates
     let totalICCount = 0;
     let totalFCCount = 0;
     let totalTrainCount = 0;
-    const perTableCounts = [];
+    const perTableCounts = {};
 
-    for (const table of tables) {
-      // Get IC count
-      const { count: icCount } = await supabase
-        .from(table)
-        .select('*', { count: 'exact', head: true })
-        .eq('ic', 'Y');
+    // Initialize per-table counts
+    tables.forEach(table => {
+      perTableCounts[table] = { count: 0 };
+    });
 
-      // Get FC count
-      const { count: fcCount } = await supabase
-        .from(table)
-        .select('*', { count: 'exact', head: true })
-        .eq('fc', 'Y');
+    // Process rows
+    (data || []).forEach(row => {
+      if (row.ic === 'Y') {
+        totalICCount++;
+        perTableCounts[row.route].count++;
+      }
+      if (row.fc === 'Y') {
+        totalFCCount++;
+      }
+      totalTrainCount++;
+    });
 
-      // Get total count
-      const { count: totalCount } = await supabase
-        .from(table)
-        .select('*', { count: 'exact', head: true });
+    // Convert perTableCounts to array
+    const breakdown = Object.entries(perTableCounts).map(([table, { count }]) => ({
+      table,
+      count
+    }));
 
-      perTableCounts.push({
-        table,
-        count: icCount || 0
-      });
 
-      totalICCount += icCount || 0;
-      totalFCCount += fcCount || 0;
-      totalTrainCount += totalCount || 0;
-    }
-
-    return res.json({
+    const response = {
       success: true,
       stats: {
         totalTrains: totalTrainCount,
         totalInterchange: totalICCount,
         totalForecast: totalFCCount,
       },
-      breakdown: perTableCounts
-    });
+      breakdown
+    };
 
+    // Cache the response
+    cache.set(cacheKey, response);
+
+    res.json(response);
   } catch (err) {
-    console.error("Error in /api/dashboard-stats ->", err);
-    return res.status(500).json({
+    console.error("Error in /api/dashboard-stats:", {
+      message: err.message,
+      stack: err.stack,
+      details: err.details || "No additional details"
+    });
+    res.status(500).json({
       success: false,
       message: "Server error fetching dashboard statistics"
     });
@@ -776,10 +952,8 @@ function normalizeRoute(rawRoute) {
   // normalize dash and remove extra spaces
   const parts = rawRoute.split(/\s*-\s*/); // split on "-" with optional spaces
   if (parts.length !== 2) {
-    // console.log("Skipping unknown route: actual route is", rawRoute);
     return "";
   }
-  // console.log(`input: ${rawRoute} -> normalized: ${parts[0].toLowerCase() + "_" + parts[1].toLowerCase()}`)
   return parts[0].toLowerCase() + "_" + parts[1].toLowerCase();
 }
 
@@ -796,7 +970,6 @@ async function processExcelData(data) {
       continue;
     }
     const normalizedRoute = normalizeRoute(route);
-    // console.log("normalizedRoute: " + normalizedRoute)
     if (!allowedTables.includes(normalizedRoute)) {
       console.warn(`Skipping unknown route: ${normalizedRoute} actual route is ${route}`);
       return;
@@ -837,12 +1010,10 @@ async function processExcelData(data) {
 async function processRouteBlock(route, data, startRow, endRow) {
   const [src, dest] = route.split("_");
   const reverseRoute = `${dest}_${src}`;
-  // console.log(reverseRoute)
   // Extract data for both directions
   const srcDestData = extractRakeData(data, startRow, endRow, "SRC-DEST");
   const destSrcData = extractRakeData(data, startRow, endRow, "DEST-SRC");
 
-  // console.log("destSrcData length:", destSrcData.length, "for", reverseRoute);
 
   // Update database
   await updateRouteTable(route, srcDestData);
@@ -981,7 +1152,6 @@ function extractRakeData(data, startRow, endRow, direction) {
 async function updateRouteTable(tableName, rakes) {
   if (!rakes.length) return;
 
-  // console.log("Total table names recieving: " + tableName);
   try {
     // 🚨 Clear the table before inserting new data
     const { error: truncateError } = await supabase
@@ -990,7 +1160,6 @@ async function updateRouteTable(tableName, rakes) {
       .neq('rake_id', 0); // Delete all records (assuming 'id' exists)
 
     if (truncateError) throw truncateError;
-    // console.log(`Truncated table ${tableName}`);
 
     // Prepare data for insertion
     const records = rakes.map(rake => ({
@@ -1012,7 +1181,6 @@ async function updateRouteTable(tableName, rakes) {
       "loc": rake.loc,
       "ic": rake.ic,
       "fc": rake.fc
-      // "name": null, // If needed, add this (schema has it, but code doesn't extract it)
     }));
 
     function dedupeBatch(batch, key = "rake_id") {
@@ -1038,15 +1206,12 @@ async function updateRouteTable(tableName, rakes) {
 
       if (error) {
         console.error(`Insert error for table ${tableName}:`, error.message, error.details || "");
-      } else {
-        console.log(`Inserted ${batch.length} into ${tableName}`);
       }
 
       insertedCount += batch.length;
     }
 
 
-    // console.log(`Inserted ${insertedCount} rakes into ${tableName}`);
     return insertedCount;
 
   } catch (error) {
@@ -1055,7 +1220,6 @@ async function updateRouteTable(tableName, rakes) {
   }
 }
 
-// Health check and server start
 app.get("/health", (req, res) => {
   res.json({ status: "Server is running" });
 });

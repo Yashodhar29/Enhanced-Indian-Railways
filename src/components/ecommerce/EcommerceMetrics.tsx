@@ -1,11 +1,3 @@
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  BoxIconLine,
-  GroupIcon,
-} from "../../icons";
-import axios from 'axios';
-import Badge from "../ui/badge/Badge";
 import React, { useState } from "react";
 
 export default function EcommerceMetrics() {

@@ -9,11 +9,16 @@ import Home from "./pages/Dashboard/Home";
 import BForm from "./pages/BForm";
 import Summary from "./pages/Summary";
 import Charts from "./pages/Charts";
+import Users from "./pages/Users";
 import { ProtectedRoute } from "./components/ProtectedItem";
+import { Toaster } from "react-hot-toast";
+
 export default function App() {
+
   return (
     <Router>
       <ScrollToTop />
+      <Toaster />
       <Routes>
         <Route
           element={
@@ -29,6 +34,7 @@ export default function App() {
           <Route path="/b-form" element={<BForm />} />
           <Route path="/summary" element={<Summary />} />
           <Route path="/charts" element={<Charts />} />
+          <Route path="/users" element={<Users />} />
 
         </Route>
 

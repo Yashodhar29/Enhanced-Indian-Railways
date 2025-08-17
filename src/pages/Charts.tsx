@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import Chart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
@@ -49,6 +48,22 @@ export default function Charts() {
   const [errorWagon, setErrorWagon] = useState<string | null>(null);
 
   // Fetch locomotive data
+
+  function deNormalizeRoute(rawRoute: string): string {
+    if (!rawRoute || typeof rawRoute !== "string") return "";
+
+    rawRoute = rawRoute.trim();
+    if (!rawRoute) return "";
+
+    // split by underscore, uppercase, and join with a dash
+    const parts = rawRoute.split("_");
+    if (parts.length !== 2) return rawRoute.toUpperCase();
+
+    return parts[0].toUpperCase() + "-" + parts[1].toUpperCase();
+  }
+
+
+
   function normalizeRoute(rawRoute: string): string {
     if (!rawRoute || typeof rawRoute !== "string") return "";
 
@@ -132,7 +147,7 @@ export default function Charts() {
     dataLabels: { enabled: false },
     stroke: { show: true, width: 2, colors: ['transparent'] },
     xaxis: {
-      categories: wagonData.map(item => item.name),
+      categories: locoData.map(item => deNormalizeRoute(item.route)),
       labels: {
         rotate: -45, // tilt to 45°
         rotateAlways: true, // force rotation
@@ -188,7 +203,6 @@ export default function Charts() {
         title="Transport Analysis | Your Application"
         description="Analysis of locomotive and wagon usage"
       />
-      <PageBreadcrumb pageTitle="Transport Analysis" />
 
       <div className="space-y-6">
         {/* Locomotive Analysis Section */}
