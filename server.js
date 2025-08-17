@@ -428,62 +428,82 @@ app.get("/api/summary/:type", async (req, res) => {
     return res.status(400).json({ success: false, message: "Invalid summary type" });
   }
 
-  const routePairs = [
-    ["sc_wadi", "wadi_sc"],
-    ["gtl_wadi", "wadi_gtl"],
-    ["ubl_hg", "hg_ubl"],
-    ["ltrr_sc", "sc_ltrr"],
-    ["pune_dd", "dd_pune"],
-    ["mrj_pune", "pune_mrj"],
-    ["sc_tjsp", "tjsp_sc"]
-  ];
-
-
   try {
+    // Check cache first
+    const cacheKey = `summary_${type}`;
+    const cachedData = cache.get(cacheKey);
+    if (cachedData) {
+      console.log(`Cache hit for summary_${type}`);
+      return res.json(cachedData);
+    }
+
+    console.time("dbQuery");
+
+    // Select the appropriate view based on type
+    const viewName = `summary_${type === "interchanged" ? "interchanged" : type}`;
+    const { data, error } = await supabase
+      .from(viewName)
+      .select('route, *');
+
+    if (error) {
+      console.error(`Error fetching view ${viewName}:`, {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      throw error;
+    }
+
+    console.timeEnd("dbQuery");
+    console.time("processing");
+
+    // Group data by table
     const results = [];
+    const tableData = {};
+    (data || []).forEach(row => {
+      if (!tableData[row.route]) {
+        tableData[row.route] = [];
+      }
+      // Remove route from row to match original data structure
+      const { route, ...rowData } = row;
+      tableData[row.route].push(rowData);
+    });
 
-    // Build WHERE clause according to selected type
-    let queryFilter = {};
-    if (type === "forecasted") {
-      queryFilter = { fc: 'Y' };
-    } else if (type === "interchanged") {
-      queryFilter = { ic: 'Y' };
-    } else if (type === "remaining") {
-      queryFilter = {
-        or: [
-          { IC: { is: null } },
-          { IC: { neq: 'Y' } },
-          { FC: { is: null } },
-          { FC: { neq: 'Y' } }
-        ]
-      };
-    }
-    // For "master", queryFilter remains empty
+    // Build results in the same order as routePairs
+    const routePairs = [
+      ["sc_wadi", "wadi_sc"],
+      ["gtl_wadi", "wadi_gtl"],
+      ["ubl_hg", "hg_ubl"],
+      ["ltrr_sc", "sc_ltrr"],
+      ["pune_dd", "dd_pune"],
+      ["mrj_pune", "pune_mrj"],
+      ["sc_tjsp", "tjsp_sc"]
+    ];
 
-    for (const [src, dest] of routePairs) {
-      // Query source table
-      const { data: srcData, error: srcError } = await supabase
-        .from(src)
-        .select('*')
-        .match(queryFilter);
+    routePairs.flat().forEach(table => {
+      results.push({
+        table,
+        data: tableData[table] || []
+      });
+    });
 
-      if (srcError) throw srcError;
-      results.push({ table: src, data: srcData });
+    console.timeEnd("processing");
 
-      // Query destination table
-      const { data: destData, error: destError } = await supabase
-        .from(dest)
-        .select('*')
-        .match(queryFilter);
+    const response = { success: true, data: results };
 
-      if (destError) throw destError;
-      results.push({ table: dest, data: destData });
-    }
+    // Cache the response
+    cache.set(cacheKey, response);
+    console.log(`Cache set for summary_${type}`);
 
-    return res.json({ success: true, data: results });
+    res.json(response);
   } catch (err) {
-    console.error("Error in /api/summary/:type ->", err);
-    return res.status(500).json({ success: false, message: "Server error fetching summary" });
+    console.error(`Error in /api/summary/${type}:`, {
+      message: err.message,
+      stack: err.stack,
+      details: err.details || "No additional details"
+    });
+    res.status(500).json({ success: false, message: "Server error fetching summary" });
   }
 });
 
@@ -531,6 +551,44 @@ app.post("/api/add-user", async (req, res) => {
     }
 
     return res.status(201).json({ success: true, user: data[0] });
+  } catch (err) {
+    console.error("Server error:", err);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
+app.get("/api/users/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { error } = await supabase
+      .from("users")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error("Supabase delete error:", error);
+      return res.status(500).json({ success: false, message: "Failed to delete user" });
+    }
+
+    return res.json({ success: true, message: "User deleted successfully" });
+  } catch (err) {
+    console.error("Server error:", err);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+app.get("/api/users", async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("*");
+
+    if (error) {
+      console.error("Supabase fetch error:", error);
+      return res.status(500).json({ success: false, message: "Failed to fetch users" });
+    }
+
+    return res.json({ success: true, users: data });
   } catch (err) {
     console.error("Server error:", err);
     return res.status(500).json({ success: false, message: "Internal server error" });

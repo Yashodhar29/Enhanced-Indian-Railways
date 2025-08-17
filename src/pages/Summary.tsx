@@ -75,19 +75,19 @@ const Summary = () => {
             onClick={() => setViewType("master")}
             className={`rounded-lg px-4 py-2 text-sm  ${viewType === "master" ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
           >
-            Master (All Data)
+            Master
           </button>
           <button
             onClick={() => setViewType("forecasted")}
             className={`rounded-lg px-4 py-2 text-sm ${viewType === "forecasted" ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
           >
-            Forecasted (FC="Y")
+            Forecasted
           </button>
           <button
             onClick={() => setViewType("interchanged")}
             className={`rounded-lg px-4 py-2 text-sm ${viewType === "interchanged" ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
           >
-            Interchanged (IC="Y")
+            Interchanged
           </button>
           <button
             onClick={() => setViewType("remaining")}
@@ -119,7 +119,7 @@ const Summary = () => {
 
               return (
                 <div key={idx} className="rounded-lg border border-gray-200">
-                  <h4 className="rounded-t-lg bg-gray-50 px-4 py-2 font-medium text-gray-500 dark:border-gray-800 dark:bg-white/[0.03]">
+                  <h4 className="rounded-t-lg bg-gray-50 px-4 py-2 font-medium text-gray-500 dark:border-gray-800 dark:text-white dark:bg-white/[0.03]">
                     {section.table.replace(/_/g, " → ").toUpperCase()}
                   </h4>
                   <div className="overflow-x-auto">
@@ -130,7 +130,7 @@ const Summary = () => {
                             <th
                               key={header}
                               scope="col"
-                              className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                              className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider  dark:text-white text-gray-500"
                             >
                               {header.replace(/_/g, " ")}
                             </th>
@@ -147,7 +147,7 @@ const Summary = () => {
                                     ? 'text-green-600 font-medium'
                                     : row['fc'] === 'Y'
                                       ? 'text-blue-600 font-medium'
-                                      : 'text-gray-500'
+                                      : 'text-gray-600 dark:text-white'
                                   }`}
                               >
                                 {row[header] || "-"}
