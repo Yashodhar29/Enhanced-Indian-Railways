@@ -455,8 +455,6 @@ app.get("/api/summary/:type", async (req, res) => {
       throw error;
     }
 
-    console.timeEnd("dbQuery");
-    console.time("processing");
 
     // Group data by table
     const results = [];
