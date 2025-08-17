@@ -20,8 +20,8 @@ const Button: React.FC<ButtonProps> = ({
   onClick,
   className = "",
   disabled = false,
-  type = "button", // ✅ default is "button"
-  ...props
+  // type = "button", // ✅ default is "button"
+  
 }) => {
   // Size Classes
   const sizeClasses = {

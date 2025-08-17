@@ -12,26 +12,9 @@ export default function MonthlyTarget() {
   const [icData, setIcData] = useState<PieData[]>([]);
   const [wagonData, setWagonData] = useState<PieData[]>([]);
   const [loading, setLoading] = useState(true);
-  const isDark = useDarkMode();
 
   // Fetch Wagon stats
 
-  function useDarkMode() {
-    const [isDark, setIsDark] = useState(false);
-
-    useEffect(() => {
-      const checkDark = () =>
-        setIsDark(document.documentElement.classList.contains("dark"));
-
-      checkDark();
-      const observer = new MutationObserver(checkDark);
-      observer.observe(document.documentElement, { attributes: true });
-
-      return () => observer.disconnect();
-    }, []);
-
-    return isDark;
-  }
 
   useEffect(() => {
     fetch("https://enhanced-indian-railways.onrender.com:3002/api/wagon-totals", { credentials: "include" })
@@ -142,16 +125,6 @@ export default function MonthlyTarget() {
       }
     }]
   };
-
-  const [isOpen, setIsOpen] = useState(false);
-
-  function toggleDropdown() {
-    setIsOpen(!isOpen);
-  }
-
-  function closeDropdown() {
-    setIsOpen(false);
-  }
 
   if (loading) return <div>Loading...</div>;
 

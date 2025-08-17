@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "../../icons";
+import { EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Checkbox from "../form/input/Checkbox";
@@ -14,12 +14,10 @@ export default function SignInForm() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
-  const [error, setError] = useState("");
   const [loading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
-    setError("");
     setIsLoading(true);
 
     try {
@@ -35,12 +33,9 @@ export default function SignInForm() {
       localStorage.setItem("token", data.token);
       if (data.success) {
         navigate("/");
-      } else {
-        setError(data.message || "Invalid username or password");
       }
     } catch (err) {
-      console.error("Login error:", err);
-      setError("Error connecting to server. Please try again later.");
+
     } finally {
       setIsLoading(false);
     }
