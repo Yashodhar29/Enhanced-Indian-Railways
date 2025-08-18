@@ -130,7 +130,7 @@ const Summary = () => {
                             <th
                               key={header}
                               scope="col"
-                              className="px-4 py-2 text-black text-left text-xs font-medium uppercase tracking-wider  dark:text-white"
+                              className=" "
                             >
                               {header.replace(/_/g, " ")}
                             </th>
