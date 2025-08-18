@@ -410,7 +410,7 @@ function authenticateUser(req, res, next) {
   if (!token) {
     return res.status(401).json({ message: "Not authenticated" });
   }
-
+  console.log(req);
   try {
     const decoded = jwt.verify(token, SECRET);
     req.user = decoded; // { id, username, role }

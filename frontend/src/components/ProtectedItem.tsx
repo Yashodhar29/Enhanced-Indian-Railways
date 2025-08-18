@@ -19,6 +19,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
           withCredentials: true,
         })
         .then((response) => {
+          console.log(response)
           setUserRole(response.data.role);
           setLoading(false);
         })
