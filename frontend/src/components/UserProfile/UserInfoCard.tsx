@@ -9,7 +9,7 @@ export default function UserInfoCard() {
 
 
   useEffect(() => {
-    axios.get("https://enhanced-indian-railways.onrender.com:3002et-user-and-role", {
+    axios.get("https://enhanced-indian-railways.onrender.comet-user-and-role", {
       withCredentials: true
     })
       .then(response => {

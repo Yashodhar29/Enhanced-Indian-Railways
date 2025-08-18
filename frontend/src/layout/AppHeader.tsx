@@ -16,7 +16,7 @@ const AppHeader: React.FC = () => {
 
   useEffect(() => {
     axios
-      .get("https://enhanced-indian-railways.onrender.com:3002/get-user-and-role", {
+      .get("https://enhanced-indian-railways.onrender.com/get-user-and-role", {
         withCredentials: true,
       })
       .then((response) => {

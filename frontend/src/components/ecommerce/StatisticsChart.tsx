@@ -17,7 +17,7 @@ export default function StatisticsChart() {
   useEffect(() => {
     const fetchIcFcStats = async () => {
       try {
-        const response = await fetch('https://enhanced-indian-railways.onrender.com:3002/api/ic-fc-stats');
+        const response = await fetch('https://enhanced-indian-railways.onrender.com/api/ic-fc-stats');
         const data = await response.json();
 
         if (data.success) {

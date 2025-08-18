@@ -36,7 +36,7 @@ export default function NotificationDropdown() {
     formData.append("file", file);
 
     try {
-      const response = await fetch("https://enhanced-indian-railways.onrender.com:3002/api/upload", {
+      const response = await fetch("https://enhanced-indian-railways.onrender.com/api/upload", {
         method: "POST",
         body: formData,
       });

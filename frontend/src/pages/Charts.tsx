@@ -82,7 +82,7 @@ export default function Charts() {
   useEffect(() => {
     const fetchLocoData = async () => {
       try {
-        const response = await fetch("https://enhanced-indian-railways.onrender.com:3002/analysis/locos");
+        const response = await fetch("https://enhanced-indian-railways.onrender.com/analysis/locos");
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
         const apiData: LocoData[] = await response.json();
         console.log(apiData)
@@ -111,7 +111,7 @@ export default function Charts() {
   useEffect(() => {
     const fetchWagonData = async () => {
       try {
-        const response = await fetch("https://enhanced-indian-railways.onrender.com:3002/api/wagon-summary");
+        const response = await fetch("https://enhanced-indian-railways.onrender.com/api/wagon-summary");
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
 
         const data = await response.json();
