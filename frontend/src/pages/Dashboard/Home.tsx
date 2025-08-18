@@ -10,8 +10,8 @@ export default function Home() {
   return (
     <>
       <PageMeta
-        title="TailAdmin: Railways Insight Provider"
-        description="This is React.js Railways Insight Provider page for TailAdmin - React.js Tailwind CSS Admin Dashboard Template"
+        title="RailNova: Railways Insight Provider"
+        description="This is Home Page of RailNova"
       />
       <div className="grid grid-cols-12 gap-4 md:gap-6">
         <div className="col-span-12 space-y-6 xl:col-span-7">

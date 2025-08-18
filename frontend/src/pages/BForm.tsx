@@ -65,7 +65,7 @@ const BForm = () => {
   return (
     <>
       <PageMeta
-        title="Route Data Viewer | Your Application"
+        title="Route Data Viewer | RailNova"
         description="View and analyze route data"
       />
 

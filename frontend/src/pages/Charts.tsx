@@ -198,7 +198,7 @@ export default function Charts() {
   return (
     <>
       <PageMeta
-        title="Transport Analysis | Your Application"
+        title="Transport Analysis | RailNova"
         description="Analysis of locomotive and wagon usage"
       />
 

@@ -60,7 +60,7 @@ const Summary = () => {
   return (
     <>
       <PageMeta
-        title="Summary Viewer | Your Application"
+        title="Summary Viewer | RailNova"
         description="View master, forecasted, interchanged and remaining trains"
       />
       <PageBreadcrumb pageTitle="Summary Data" />
