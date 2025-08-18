@@ -297,10 +297,11 @@ app.post("/api/login", async (req, res) => {
       // Send as httpOnly cookie (same as original)
       res.cookie("token", token, {
         httpOnly: true,
-        secure: false, // keeping false as per your original
-        sameSite: "lax",
-        maxAge: 24 * 60 * 60 * 1000 // 1 day
+        secure: true,     
+        sameSite: "none", 
+        maxAge: 24 * 60 * 60 * 1000
       });
+
       return res.json({ success: true });
     } else {
       f

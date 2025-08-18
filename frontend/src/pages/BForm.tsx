@@ -96,7 +96,7 @@ const BForm = () => {
         ) : (
           <div className="overflow-x-auto rounded-lg border border-gray-200">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50 dark:border-gray-300 dark:bg-white/[0.03]">
+              <thead className="bg-gray-200  dark:border-gray-300  dark:bg-white/[0.15]">
                 <tr>
                   {headers.map((header) => (
                     <th
