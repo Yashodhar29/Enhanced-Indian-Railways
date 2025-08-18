@@ -119,18 +119,18 @@ const Summary = () => {
 
               return (
                 <div key={idx} className="rounded-lg border border-gray-200">
-                  <h4 className="rounded-t-lg bg-gray-50 px-4 py-2 font-medium text-gray-500 dark:border-gray-800 dark:text-white dark:bg-white/[0.03]">
+                  <h4 className="rounded-t-lg bg-gray-200 px-4 py-2 font-medium text-black dark:border-gray-800 dark:text-white dark:bg-white/[0.15]">
                     {section.table.replace(/_/g, " → ").toUpperCase()}
                   </h4>
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50 dark:border-gray-300 dark:bg-white/[0.03]">
+                      <thead className="bg-gray-200  dark:border-gray-300  dark:bg-white/[0.15]">
                         <tr>
                           {headers.map((header) => (
                             <th
                               key={header}
                               scope="col"
-                              className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider  dark:text-white text-gray-500"
+                              className="px-4 py-2 text-black text-left text-xs font-medium uppercase tracking-wider  dark:text-white"
                             >
                               {header.replace(/_/g, " ")}
                             </th>
@@ -144,9 +144,9 @@ const Summary = () => {
                               <td
                                 key={`${row.id}-${header}`}
                                 className={`whitespace-nowrap px-4 py-2 text-sm ${row['ic'] === 'Y'
-                                    ? 'text-green-600 font-medium'
+                                    ? 'text-green-600 font-medium dark:text-green-300'
                                     : row['fc'] === 'Y'
-                                      ? 'text-blue-600 font-medium'
+                                      ? 'text-blue-600 font-medium dark:text-[#01BFFB]'
                                       : 'text-gray-600 dark:text-white'
                                   }`}
                               >

@@ -9,12 +9,24 @@ interface TableRow {
 
 const BForm = () => {
   const routes = [
-    "SC-WADI", "WADI-SC", "GTL-WADI", "WADI-GTL", "UBL-HG", "HG-UBL",
-    "LTRR-SC", "SC-LTRR", "PUNE-DD", "DD-PUNE", "MRJ-PUNE", "PUNE-MRJ",
-    "SC-TJSP", "TJSP-SC"
+    { label: "SC-WADI", value: "sc_wadi" },
+    { label: "WADI-SC", value: "wadi_sc" },
+    { label: "GTL-WADI", value: "gtl_wadi" },
+    { label: "WADI-GTL", value: "wadi_gtl" },
+    { label: "UBL-HG", value: "ubl_hg" },
+    { label: "HG-UBL", value: "hg_ubl" },
+    { label: "LTRR-SC", value: "ltrr_sc" },
+    { label: "SC-LTRR", value: "sc_ltrr" },
+    { label: "PUNE-DD", value: "pune_dd" },
+    { label: "DD-PUNE", value: "dd_pune" },
+    { label: "MRJ-PUNE", value: "mrj_pune" },
+    { label: "PUNE-MRJ", value: "pune_mrj" },
+    { label: "SC-TJSP", value: "sc_tjsp" },
+    { label: "TJSP-SC", value: "tjsp_sc" },
   ];
 
-  const [selectedRoute, setSelectedRoute] = useState<string>("SC-LTRR");
+
+  const [selectedRoute, setSelectedRoute] = useState<string>("sc_wadi");
   const [tableData, setTableData] = useState<TableRow[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [headers, setHeaders] = useState<string[]>([]);
@@ -68,11 +80,12 @@ const BForm = () => {
             className="rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             {routes.map((route) => (
-              <option key={route} value={route}>
-                {route}
+              <option key={route.value} value={route.value}>
+                {route.label}
               </option>
             ))}
           </select>
+
         </div>
 
         {loading ? (
@@ -83,13 +96,13 @@ const BForm = () => {
         ) : (
           <div className="overflow-x-auto rounded-lg border border-gray-200">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 dark:border-gray-300 dark:bg-white/[0.03]">
                 <tr>
                   {headers.map((header) => (
                     <th
                       key={header}
                       scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                      className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider  dark:text-white text-gray-500"
                     >
                       {header}
                     </th>
