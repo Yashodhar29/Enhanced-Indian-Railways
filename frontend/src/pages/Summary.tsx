@@ -119,7 +119,7 @@ const Summary = () => {
 
               return (
                 <div key={idx} className="rounded-lg border border-gray-200">
-                  <h4 className="rounded-t-lg bg-gray-200 px-4 py-2 font-medium text-black dark:border-gray-800 dark:text-white dark:bg-white/[0.15]">
+                  <h4 className="rounded-t-lg bg-gray-200 px-4 py-2 text-black dark:border-gray-800 dark:text-white dark:bg-white/[0.15]">
                     {section.table.replace(/_/g, " → ").toUpperCase()}
                   </h4>
                   <div className="overflow-x-auto">
@@ -130,7 +130,7 @@ const Summary = () => {
                             <th
                               key={header}
                               scope="col"
-                              className=" "
+                              className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider  dark:text-white text-black"
                             >
                               {header.replace(/_/g, " ")}
                             </th>

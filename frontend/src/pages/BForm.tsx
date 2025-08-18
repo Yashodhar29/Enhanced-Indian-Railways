@@ -36,6 +36,7 @@ const BForm = () => {
     try {
       const res = await axios.get(`https://enhanced-indian-railways.onrender.com/api/route/${route}`);
       if (res.data.success) {
+
         const formatted = res.data.data.map((row: any, idx: number) => {
           const newRow: TableRow = { id: idx + 1 };
           for (const key in row) {
@@ -77,14 +78,20 @@ const BForm = () => {
           <select
             value={selectedRoute}
             onChange={(e) => setSelectedRoute(e.target.value)}
-            className="rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 
+             bg-white dark:bg-gray-900 dark:border-gray-700 dark:text-white text-gray-800"
           >
             {routes.map((route) => (
-              <option key={route.value} value={route.value}>
+              <option
+                key={route.value}
+                value={route.value}
+                className="bg-white dark:bg-gray-900 dark:text-white text-gray-800"
+              >
                 {route.label}
               </option>
             ))}
           </select>
+
 
         </div>
 
@@ -102,20 +109,25 @@ const BForm = () => {
                     <th
                       key={header}
                       scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider  dark:text-white text-gray-500"
+                      className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider  dark:text-white text-black"
                     >
-                      {header}
+                      {header.replace(/_/g, " ")}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 bg-white">
+              <tbody className="divide-y divide-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
                 {tableData.map((row) => (
-                  <tr key={row.id} className="hover:bg-gray-50">
+                  <tr key={row.id} className="hover:bg-gray-50 dark:hover:bg-gray-900">
                     {headers.map((header) => (
                       <td
                         key={`${row.id}-${header}`}
-                        className="whitespace-nowrap px-6 py-4 text-sm text-gray-500"
+                        className={`whitespace-nowrap px-4 py-2 text-sm ${row['ic'] === 'Y'
+                          ? 'text-green-600 font-medium dark:text-green-300'
+                          : row['fc'] === 'Y'
+                            ? 'text-blue-600 font-medium dark:text-[#01BFFB]'
+                            : 'text-gray-600 dark:text-white'
+                          }`}
                       >
                         {row[header] || "-"}
                       </td>
