@@ -54,6 +54,7 @@ let supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 async function connectDB() {
   try {
     supabase = await createClient(supabaseUrl, supabaseAnonKey)
+
     // db = await postgres(connectionString)
     console.log("database connected successfully")
   } catch (error) {
@@ -265,7 +266,6 @@ app.get("/api/ic-stats", async (req, res) => {
 
 app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
-
   try {
     // Supabase equivalent of the MySQL query
     const { data: users, error } = await supabase

@@ -22,7 +22,7 @@ const BForm = () => {
   const fetchData = async (route: string) => {
     setLoading(true);
     try {
-      const res = await axios.get(`https://enhanced-indian-railways.onrender.com/api/analysis/${route}`);
+      const res = await axios.get(`https://enhanced-indian-railways.onrender.com/api/route/${route}`);
       if (res.data.success) {
         const formatted = res.data.data.map((row: any, idx: number) => {
           const newRow: TableRow = { id: idx + 1 };
