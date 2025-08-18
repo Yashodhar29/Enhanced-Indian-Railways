@@ -13,22 +13,6 @@ const BForm = () => {
     "LTRR-SC", "SC-LTRR", "PUNE-DD", "DD-PUNE", "MRJ-PUNE", "PUNE-MRJ",
     "SC-TJSP", "TJSP-SC"
   ];
-  function normalizeRoute(rawRoute: string): string {
-    if (!rawRoute || typeof rawRoute !== "string") return "";
-
-    rawRoute = rawRoute.trim();
-    if (!rawRoute) return "";
-
-    // normalize dash and remove extra spaces
-    const parts = rawRoute.split(/\s*-\s*/); // split on "-" with optional spaces
-    if (parts.length !== 2) {
-      // console.log("Skipping unknown route: actual route is", rawRoute);
-      return "";
-    }
-    // console.log(`input: ${rawRoute} -> normalized: ${parts[0].toLowerCase() + "_" + parts[1].toLowerCase()}`)
-    return parts[0].toLowerCase() + "_" + parts[1].toLowerCase();
-  }
-
 
   const [selectedRoute, setSelectedRoute] = useState<string>("SC-LTRR");
   const [tableData, setTableData] = useState<TableRow[]>([]);
@@ -38,7 +22,7 @@ const BForm = () => {
   const fetchData = async (route: string) => {
     setLoading(true);
     try {
-      const res = await axios.get(`https://enhanced-indian-railways.onrender.comte)}`);
+      const res = await axios.get(`https://enhanced-indian-railways.onrender.com/api/analysis/${route}`);
       if (res.data.success) {
         const formatted = res.data.data.map((row: any, idx: number) => {
           const newRow: TableRow = { id: idx + 1 };
