@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, useMotionValue } from "framer-motion";
 import { Dropdown } from "../ui/dropdown/Dropdown";
-import { DropdownItem } from "../ui/dropdown/DropdownItem";
 
 export default function ClearAllData() {
     const [isOpen, setIsOpen] = useState(false);
@@ -83,7 +82,7 @@ export default function ClearAllData() {
                             dragConstraints={{ left: 0, right: 220 }}
                             dragElastic={0}
                             style={{ x }}
-                            onDragEnd={(event, info) => {
+                            onDragEnd={(_, info) => {
                                 if (info.point.x > 150) {
                                     setConfirmed(true);
                                 } else {

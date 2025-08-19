@@ -124,7 +124,7 @@ export function generatePDF(stationName: string, headers: string[], data: any[][
       2: { fontStyle: "bold" }, // to station
     },
     margin: { left: 40, right: 40 },
-    didDrawPage: (data) => {
+    didDrawPage: (_) => {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
       doc.text(stationName, 40, 30); // Place station name at top (Y=30)
