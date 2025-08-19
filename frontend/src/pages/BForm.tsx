@@ -3,11 +3,19 @@ import axios from "axios";
 import PageMeta from "../components/common/PageMeta";
 
 interface TableRow {
-  id: number;
+  id: number; // React key
+  "RAKE ID": string; // Explicitly define the RAKE ID column
   [key: string]: string | number | null;
 }
 
 const BForm = () => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [selectedRoute, setSelectedRoute] = useState<string>("sc_wadi");
+  const [tableData, setTableData] = useState<TableRow[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [headers, setHeaders] = useState<string[]>([]);
+  const [userRole, setUserRole] = useState<string>();
+
   const routes = [
     { label: "SC-WADI", value: "sc_wadi" },
     { label: "WADI-SC", value: "wadi_sc" },
@@ -25,30 +33,43 @@ const BForm = () => {
     { label: "TJSP-SC", value: "tjsp_sc" },
   ];
 
+  useEffect(() => {
+    axios.get("http://localhost:3002/api/get-user-and-role", {
+      withCredentials: true
+    })
+      .then(response => {
+        console.log(response)
+        setUserRole(response.data.role);
+      })
+      .catch(error => {
+        console.error("Error fetching user data:", error);
+      });
+  }, []);
 
-  const [selectedRoute, setSelectedRoute] = useState<string>("sc_wadi");
-  const [tableData, setTableData] = useState<TableRow[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [headers, setHeaders] = useState<string[]>([]);
 
   const fetchData = async (route: string) => {
     setLoading(true);
     try {
-      const res = await axios.get(`https://enhanced-indian-railways.onrender.com/api/route/${route}`);
+      const res = await axios.get(`http://localhost:3002/api/route/${route}`);
       if (res.data.success) {
-
         const formatted = res.data.data.map((row: any, idx: number) => {
-          const newRow: TableRow = { id: idx + 1 };
+          const newRow: TableRow = {
+            id: idx + 1, // Keep as React key
+            "RAKE ID": row["rake_id"] ? String(row["rake_id"]) : "", // Set RAKE ID from rake_id
+          };
           for (const key in row) {
-            newRow[key] = row[key] !== null ? String(row[key]) : "";
+            if (key !== "rake_id") { // Exclude rake_id to avoid overwriting
+              newRow[key] = row[key] !== null ? String(row[key]) : "";
+            }
           }
+          console.log(`Row ${idx + 1} RAKE ID:`, newRow["RAKE ID"]); // Debug log
           return newRow;
         });
         setTableData(formatted);
 
         // Get headers from first row if available
         if (formatted.length > 0) {
-          setHeaders(Object.keys(formatted[0]).filter(key => key !== "id"));
+          setHeaders(Object.keys(formatted[0]).filter((key) => key !== "id"));
         }
       }
     } catch (err) {
@@ -74,12 +95,12 @@ const BForm = () => {
           Route Data Viewer
         </h3>
 
-        <div className="mb-4">
+        <div className="mb-4 flex justify-between">
           <select
             value={selectedRoute}
             onChange={(e) => setSelectedRoute(e.target.value)}
             className="rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 
-             bg-white dark:bg-gray-900 dark:border-gray-700 dark:text-white text-gray-800"
+              bg-white dark:bg-gray-900 dark:border-gray-700 dark:text-white text-gray-800"
           >
             {routes.map((route) => (
               <option
@@ -91,8 +112,14 @@ const BForm = () => {
               </option>
             ))}
           </select>
-
-
+          {(userRole === 'admin' || userRole === 'editor') &&
+            <button
+              onClick={() => setIsEditing(!isEditing)}
+              className="rounded-lg bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+            >
+              {isEditing ? "Save" : "Edit"}
+            </button>
+          }
         </div>
 
         {loading ? (
@@ -103,13 +130,13 @@ const BForm = () => {
         ) : (
           <div className="overflow-x-auto rounded-lg border border-gray-200">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-200  dark:border-gray-300  dark:bg-white/[0.15]">
+              <thead className="bg-gray-200 dark:border-gray-300 dark:bg-white/[0.15]">
                 <tr>
                   {headers.map((header) => (
                     <th
                       key={header}
                       scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider  dark:text-white text-black"
+                      className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider dark:text-white text-black"
                     >
                       {header.replace(/_/g, " ")}
                     </th>
@@ -117,16 +144,53 @@ const BForm = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-                {tableData.map((row) => (
+                {tableData.map((row, rowIndex) => (
                   <tr key={row.id} className="hover:bg-gray-50 dark:hover:bg-gray-900">
                     {headers.map((header) => (
                       <td
                         key={`${row.id}-${header}`}
-                        className={`whitespace-nowrap px-4 py-2 text-sm ${row['ic'] === 'Y'
-                          ? 'text-green-600 font-medium dark:text-green-300'
-                          : row['fc'] === 'Y'
-                            ? 'text-blue-600 font-medium dark:text-[#01BFFB]'
-                            : 'text-gray-600 dark:text-white'
+                        contentEditable={isEditing}
+                        suppressContentEditableWarning={true}
+                        tabIndex={0} // Ensure focusable
+                        onKeyDown={async (e) => {
+                          if ((e.key === "Enter" || e.keyCode === 13) && isEditing) {
+                            e.preventDefault();
+                            const currentCell = e.currentTarget;
+                            const originalValue = row[header] || "";
+                            const updatedValue = currentCell.textContent ?? "";
+
+                            if (updatedValue !== originalValue) {
+                              setTableData((prev) => {
+                                const newData = [...prev];
+                                newData[rowIndex] = { ...newData[rowIndex], [header]: updatedValue };
+                                return newData;
+                              });
+
+                              const rakeId = row["RAKE ID"] || "UNKNOWN_RAKE_ID";
+
+                              try {
+                                await fetch(
+                                  `http://localhost:3002/api/save-table?` +
+                                  `tableName=${encodeURIComponent(selectedRoute)}` +
+                                  `&rake_id=${encodeURIComponent(rakeId)}` +
+                                  `&column=${encodeURIComponent(header)}` +
+                                  `&value=${encodeURIComponent(updatedValue)}` +
+                                  `&original=${encodeURIComponent(originalValue)}`
+                                );
+                              } catch (err) {
+                                console.error("Fetch error:", err);
+                              } finally {
+                                currentCell.blur(); // ✅ always blur, success or fail
+                              }
+                            }
+                          }
+                        }}
+
+                        className={`whitespace-nowrap px-4 py-2 text-sm outline-none ${row["ic"] === "Y"
+                          ? "text-green-600 font-medium dark:text-green-300"
+                          : row["fc"] === "Y"
+                            ? "text-blue-600 font-medium dark:text-[#01BFFB]"
+                            : "text-gray-600 dark:text-white"
                           }`}
                       >
                         {row[header] || "-"}

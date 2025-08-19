@@ -6,7 +6,7 @@ import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import NotificationDropdown from "../components/header/NotificationDropdown";
 import UserDropdown from "../components/header/UserDropdown";
 import axios from 'axios';
-
+import ClearAllData from "../components/header/ClearAllData";
 
 const AppHeader: React.FC = () => {
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
@@ -16,7 +16,7 @@ const AppHeader: React.FC = () => {
 
   useEffect(() => {
     axios
-      .get("https://enhanced-indian-railways.onrender.com/api/get-user-and-role", {
+      .get("http://localhost:3002/api/get-user-and-role", {
         withCredentials: true,
       })
       .then((response) => {
@@ -104,11 +104,15 @@ const AppHeader: React.FC = () => {
               className="dark:hidden"
               src="./images/logo/logo.svg"
               alt="Logo"
+              width={150}
+              height={40}
             />
             <img
               className="hidden dark:block"
               src="./images/logo/logo-dark.svg"
               alt="Logo"
+              width={150}
+              height={40}
             />
           </Link>
 
@@ -142,6 +146,7 @@ const AppHeader: React.FC = () => {
             <ThemeToggleButton />
             {/* <!-- Dark Mode Toggler --> */}
             {userRole === 'admin' && <NotificationDropdown />}
+            {userRole === 'admin' && <ClearAllData />}
             {/* <!-- Notification Menu Area --> */}
           </div>
           {/* <!-- User Area --> */}

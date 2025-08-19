@@ -297,8 +297,8 @@ app.post("/api/login", async (req, res) => {
       // Send as httpOnly cookie (same as original)
       res.cookie("token", token, {
         httpOnly: true,
-        secure: true,     
-        sameSite: "none", 
+        secure: true,
+        sameSite: "none",
         maxAge: 24 * 60 * 60 * 1000
       });
 
@@ -410,7 +410,6 @@ function authenticateUser(req, res, next) {
   if (!token) {
     return res.status(401).json({ message: "Not authenticated" });
   }
-  console.log(req);
   try {
     const decoded = jwt.verify(token, SECRET);
     req.user = decoded; // { id, username, role }
@@ -756,7 +755,35 @@ app.get("/api/wagon-summary", async (req, res) => {
   }
 });
 
+async function applyOverrides() {
+  try {
 
+    // Fetch all overrides
+    const { data: overrides, error: fetchError } = await supabase
+      .from('useroverrides')
+      .select('*');
+
+    if (fetchError) throw fetchError;
+
+    // Apply updates for each override
+    for (const row of overrides) {
+      const { tablename, rake_id, column_name, new: newValue } = row;
+      console.log(tablename, rake_id, column_name, newValue);
+      if (!tablename || !rake_id || !column_name) continue;
+
+      const { error: updateError } = await supabase
+        .from(tablename)
+        .update({ [column_name.toLowerCase()]: newValue })
+        .eq("rake_id", rake_id);
+
+      if (updateError) throw updateError;
+    }
+
+    console.log("UserOverrides applied to all route tables.");
+  } catch (err) {
+    console.error("Error applying user overrides:", err);
+  }
+}
 app.get("/api/ic-fc-stats", async (req, res) => {
   const tablePairs = [
     { src: "sc", dest: "wadi" },
@@ -970,6 +997,82 @@ app.get("/api/route/:tableName", async (req, res) => {
 });
 
 
+app.get("/api/save-table", async (req, res) => {
+  const { tableName, rake_id, column, value, original } = req.query;
+  console.log("Request params:", { tableName, rake_id, column, value, original });
+
+  if (!rake_id || !column) {
+    return res.status(400).json({ error: "Missing parameters" });
+  }
+
+  try {
+    // Update the main table
+    const { error: updateError, data: updateData } = await supabase
+      .from(tableName)
+      .update({ [column.toLowerCase()]: value })
+      .eq("rake_id", rake_id);
+
+    console.log("Main table update result:", { updateError, updateData });
+    if (updateError) throw updateError;
+
+    // Check if the rake_id and column_name combination exists
+    const { count } = await supabase
+      .from('useroverrides')
+      .select('*', { count: 'exact', head: true })
+      .eq('rake_id', rake_id)
+      .eq('column_name', column.toLowerCase());
+
+    console.log("Exists check count:", count);
+    const exists = count > 0;
+
+    if (exists) {
+      // Update only the 'new' column if the combination exists
+      const { error: updateOverrideError, data: updateOverrideData } = await supabase
+        .from('useroverrides')
+        .update({ new: value, time: new Date().toISOString() })
+        .eq('rake_id', rake_id)
+        .eq('column_name', column.toLowerCase());
+
+      console.log("Override update result:", { updateOverrideError, updateOverrideData });
+      if (updateOverrideError) throw updateOverrideError;
+    } else {
+      // Insert a new row if the combination doesn't exist
+      const { error: insertOverrideError, data: insertOverrideData } = await supabase
+        .from('useroverrides')
+        .insert({
+          rake_id,
+          new: value,
+          firstvalue: original,
+          tablename: tableName,
+          column_name: column,
+          time: new Date().toISOString(),
+        });
+
+      console.log("Override insert result:", { insertOverrideError, insertOverrideData });
+      if (insertOverrideError) throw insertOverrideError;
+    }
+
+    res.json({ success: true, rake_id, column, value });
+  } catch (err) {
+    console.error("Error saving table:", err);
+    res.status(500).json({ error: "Failed to save" });
+  }
+});
+
+
+app.get("/api/clear-all-data", async (req, res) => {
+  try {
+    const { error } = await supabase.rpc("truncate_all_tables");
+    if (error) throw error;
+
+    res.json({ success: true, message: "All tables truncated successfully" });
+  } catch (err) {
+    console.error("Error truncating tables:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+
 // Process Excel and update database
 app.post("/api/upload", upload.single("file"), async (req, res) => {
   try {
@@ -984,7 +1087,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
 
     // Process routes
     const processedRoutes = await processExcelData(data);
-
+    await applyOverrides();
     res.json({
       success: true,
       message: "Database updated successfully",

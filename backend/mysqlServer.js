@@ -50,11 +50,11 @@ const dbConfig = {
 
 let db;
 let supabaseUrl = "https://pojmggviqeoezopoiija.supabase.co";
-let supabaseAnonKey  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvam1nZ3ZpcWVvZXpvcG9paWphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyNDU1MTYsImV4cCI6MjA3MDgyMTUxNn0.9cysU2JShCs0Qn9usUOkGeX71hC8F6MCkpv1xZCpEwI" 
+let supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvam1nZ3ZpcWVvZXpvcG9paWphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyNDU1MTYsImV4cCI6MjA3MDgyMTUxNn0.9cysU2JShCs0Qn9usUOkGeX71hC8F6MCkpv1xZCpEwI"
 async function connectDB() {
   try {
-    // db = await mysql.createConnection(dbConfig);
-    db = await createClient(supabaseUrl, supabaseAnonKey)
+    db = await mysql.createConnection(dbConfig);
+    // db = await createClient(supabaseUrl, supabaseAnonKey)
     // db = await postgres(connectionString)
     console.log("Database connected successfully");
   } catch (error) {
@@ -133,6 +133,43 @@ app.get("/analysis/locos", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+
+app.get("/api/users", async (req, res) => {
+  try {
+    const [rows] = await db.query("SELECT * FROM users");
+    res.json({ success: true, users: rows });
+  } catch (err) {
+    console.error("MySQL fetch error:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch users" });
+  }
+});
+
+
+async function applyOverrides() {
+  try {
+    const [overrides] = await db.query(`SELECT * FROM useroverrides`);
+
+    for (const row of overrides) {
+      const { tablename, rake_id, column_name, new: newValue } = row;
+
+      if (!tablename || !rake_id || !column_name) continue;
+
+      const sql = `
+        UPDATE \`${tablename.replace("_", "-")}\`
+        SET \`${column_name}\` = ?
+        WHERE \`RAKE ID\` = ?
+      `;
+      await db.query(sql, [newValue, rake_id]);
+    }
+
+    console.log("UserOverrides applied to all route tables.");
+  } catch (err) {
+    console.error("Error applying user overrides:", err);
+  }
+}
+
+
 app.get("/api/wagon-totals", async (req, res) => {
   try {
     const tables = [
@@ -325,9 +362,9 @@ function cleanYesNo(val) {
 }
 
 const allowedTables = [
-  "SC-WADI", "WADI-SC", "GTL-WADI", "WADI-GTL", "UBL-HG", "HG-UBL",
-  "LTRR-SC", "SC-LTRR", "PUNE-DD", "DD-PUNE", "MRJ-PUNE", "PUNE-MRJ",
-  "SC-TJSP", "TJSP-SC"
+  "sc-wadi", "wadi-sc", "gtl-wadi", "wadi-gtl", "ubl-hg", "hg-ubl",
+  "ltrr-sc", "sc-ltrr", "pune-dd", "dd-pune", "mrj-pune", "pune-mrj",
+  "sc-tjsp", "tjsp-sc"
 ];
 
 // Group into SRC-DEST & DEST-SRC pairs
@@ -357,53 +394,6 @@ function authenticateUser(req, res, next) {
     res.status(403).json({ message: "Invalid token" });
   }
 }
-
-// app.get("/api/summary/:type", async (req, res) => {
-//   const type = (req.params.type || "").toLowerCase(); // master | interchanged | non-interchanged
-//   const allowedTypes = ["master", "interchanged", "non-interchanged"];
-//   if (!allowedTypes.includes(type)) {
-//     return res.status(400).json({ success: false, message: "Invalid summary type" });
-//   }
-
-//   // Ordered SRC-DEST / DEST-SRC pairs (keeps the order you requested)
-//   const routePairs = [
-//     ["SC-WADI", "WADI-SC"],
-//     ["GTL-WADI", "WADI-GTL"],
-//     ["UBL-HG", "HG-UBL"],
-//     ["LTRR-SC", "SC-LTRR"],
-//     ["PUNE-DD", "DD-PUNE"],
-//     ["MRJ-PUNE", "PUNE-MRJ"],
-//     ["SC-TJSP", "TJSP-SC"]
-//   ];
-
-//   try {
-//     const results = [];
-
-//     // Build WHERE clause according to selected type
-//     let whereClause = "";
-//     if (type === "interchanged") {
-//       whereClause = " WHERE `IC` = 'Y' ";
-//     } else if (type === "non-interchanged") {
-//       whereClause = " WHERE `IC` IS NULL OR `IC` <> 'Y' ";
-//     }
-
-//     // Query each pair in order, pushing SRC-DEST then DEST-SRC
-//     for (const [src, dest] of routePairs) {
-//       // fetch src (SRC-DEST)
-//       const [rowsSrc] = await db.query(`SELECT * FROM \`${src}\` ${whereClause}`);
-//       results.push({ table: src, data: rowsSrc });
-
-//       // fetch dest (DEST-SRC)
-//       const [rowsDest] = await db.query(`SELECT * FROM \`${dest}\` ${whereClause}`);
-//       results.push({ table: dest, data: rowsDest });
-//     }
-
-//     return res.json({ success: true, data: results });
-//   } catch (err) {
-//     console.error("Error in /api/summary/:type ->", err);
-//     return res.status(500).json({ success: false, message: "Server error fetching summary" });
-//   }
-// });
 
 app.get("/api/summary/:type", async (req, res) => {
   const type = (req.params.type || "").toLowerCase();
@@ -695,15 +685,52 @@ app.get("/api/dashboard-stats", async (req, res) => {
   }
 });
 
+app.get("/api/save-table", async (req, res) => {
+  const { tableName, rake_id, column, value, original } = req.query;
+  console.log(rake_id, column, value, original);
+
+  if (!rake_id || !column) {
+    return res.status(400).json({ error: "Missing parameters" });
+  }
+
+  try {
+    // Update the main table
+    const updateSql = `UPDATE \`${tableName.replace("_", "-")}\` SET \`${column}\` = ? WHERE \`RAKE ID\` = ?`;
+    await db.query(updateSql, [value, rake_id]);
+
+    // Check if the rake_id and column_name combination exists
+    const checkSql = `SELECT COUNT(*) as count FROM useroverrides WHERE rake_id = ? AND column_name = ?`;
+    const [checkResult] = await db.query(checkSql, [rake_id, column]);
+    const exists = checkResult[0].count > 0;
+
+    if (exists) {
+      // Update only the 'new' column if the combination exists
+      const updateOverrideSql = `UPDATE useroverrides SET new = ?, time = NOW() WHERE rake_id = ? AND column_name = ?`;
+      await db.query(updateOverrideSql, [value, rake_id, column]);
+    } else {
+      // Insert a new row if the combination doesn't exist
+      const insertOverrideSql = `
+        INSERT INTO useroverrides (rake_id, previous, new, firstvalue, tablename, column_name, time)
+        VALUES (?, ?, ?, ?, ?, ?, NOW())
+      `;
+      await db.query(insertOverrideSql, [rake_id, original, value, original, tableName, column]);
+    }
+
+    res.json({ success: true, rake_id, column, value });
+  } catch (err) {
+    console.error("Error saving table:", err);
+    res.status(500).json({ error: "Failed to save" });
+  }
+});
+
 app.get("/api/route/:tableName", async (req, res) => {
   try {
     const tableName = req.params.tableName;
-
-    if (!allowedTables.includes(tableName)) {
+    if (!allowedTables.includes(tableName.replace("_", "-"))) {
       return res.status(400).json({ success: false, message: "Invalid route" });
     }
 
-    const [rows] = await db.query(`SELECT * FROM \`${tableName}\``);
+    const [rows] = await db.query(`SELECT * FROM \`${tableName.replace("_", "-")}\``);
     res.json({ success: true, data: rows });
 
   } catch (error) {
@@ -729,7 +756,8 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
 
     // Process routes
     const processedRoutes = await processExcelData(data);
-
+    await applyOverrides();
+    
     res.json({
       success: true,
       message: "Database updated successfully",
@@ -743,11 +771,6 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     });
   }
 });
-function normalizeRoute(route) {
-  if (!route || !route.includes("-")) return route;
-  const [src, dest] = route.split("-");
-  return [src, dest].sort().join("-"); // alphabetical order to merge reverse
-}
 // Core processing function
 async function processExcelData(data) {
   const ROUTE_COL = 29; // Column AD (0-based index)

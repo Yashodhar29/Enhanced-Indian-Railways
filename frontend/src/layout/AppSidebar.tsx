@@ -72,7 +72,7 @@ const AppSidebar: React.FC = () => {
 
 
   useEffect(() => {
-    axios.get("https://enhanced-indian-railways.onrender.com/api/get-user-and-role", {
+    axios.get("http://localhost:3002/api/get-user-and-role", {
       withCredentials: true
     })
       .then(response => {

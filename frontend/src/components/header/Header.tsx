@@ -16,7 +16,7 @@ const Header: React.FC<HeaderProps> = ({ onClick, onToggle }) => {
 
   useEffect(() => {
     axios
-      .get("https://enhanced-indian-railways.onrender.com/api/get-user-and-role", {
+      .get("http://localhost:3002/api/get-user-and-role", {
         withCredentials: true,
       })
       .then((response) => {
@@ -99,11 +99,15 @@ const Header: React.FC<HeaderProps> = ({ onClick, onToggle }) => {
               className="dark:hidden"
               src="./images/logo/logo.svg"
               alt="Logo"
+              width={150}
+              height={40}
             />
             <img
               className="hidden dark:block"
               src="./images/logo/logo-dark.svg"
               alt="Logo"
+              width={150}
+              height={40}
             />
           </Link>
 
