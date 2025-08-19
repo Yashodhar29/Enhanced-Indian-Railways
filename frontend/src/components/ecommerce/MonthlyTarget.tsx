@@ -17,7 +17,7 @@ export default function MonthlyTarget() {
 
 
   useEffect(() => {
-    fetch("http://localhost:3002/api/wagon-totals", { credentials: "include" })
+    fetch("https://enhanced-indian-railways.onrender.com/api/wagon-totals", { credentials: "include" })
       .then(res => {
         if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
         return res.json();
@@ -28,7 +28,7 @@ export default function MonthlyTarget() {
 
   // Fetch IC stats
   useEffect(() => {
-    fetch("http://localhost:3002/api/ic-stats", { credentials: "include" })
+    fetch("https://enhanced-indian-railways.onrender.com/api/ic-stats", { credentials: "include" })
       .then(res => {
         if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
         return res.json();

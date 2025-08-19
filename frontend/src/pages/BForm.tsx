@@ -34,7 +34,7 @@ const BForm = () => {
   ];
 
   useEffect(() => {
-    axios.get("http://localhost:3002/api/get-user-and-role", {
+    axios.get("https://enhanced-indian-railways.onrender.com/api/get-user-and-role", {
       withCredentials: true
     })
       .then(response => {
@@ -50,7 +50,7 @@ const BForm = () => {
   const fetchData = async (route: string) => {
     setLoading(true);
     try {
-      const res = await axios.get(`http://localhost:3002/api/route/${route}`);
+      const res = await axios.get(`https://enhanced-indian-railways.onrender.com/api/route/${route}`);
       if (res.data.success) {
         const formatted = res.data.data.map((row: any, idx: number) => {
           const newRow: TableRow = {
@@ -170,7 +170,7 @@ const BForm = () => {
 
                               try {
                                 await fetch(
-                                  `http://localhost:3002/api/save-table?` +
+                                  `https://enhanced-indian-railways.onrender.com/api/save-table?` +
                                   `tableName=${encodeURIComponent(selectedRoute)}` +
                                   `&rake_id=${encodeURIComponent(rakeId)}` +
                                   `&column=${encodeURIComponent(header)}` +
