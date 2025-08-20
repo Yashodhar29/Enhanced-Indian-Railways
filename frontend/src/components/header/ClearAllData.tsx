@@ -21,7 +21,7 @@ export default function ClearAllData() {
         if (confirmed) {
             const clearAll = async () => {
                 try {
-                    const res = await fetch("https://enhanced-indian-railways.onrender.com/api/clear-all-data");
+                    const res = await fetch("http://localhost:3002/api/clear-all-data");
                     const data = await res.json();
 
                     if (data.success) {

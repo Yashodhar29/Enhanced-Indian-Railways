@@ -6,6 +6,7 @@ import * as XLSX from "xlsx";
 import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
 import { createClient } from '@supabase/supabase-js';
+import fetch from 'node-fetch';
 
 const app = express();
 const port = 3002;
@@ -53,7 +54,7 @@ let supabaseUrl = "https://pojmggviqeoezopoiija.supabase.co";
 let supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvam1nZ3ZpcWVvZXpvcG9paWphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUyNDU1MTYsImV4cCI6MjA3MDgyMTUxNn0.9cysU2JShCs0Qn9usUOkGeX71hC8F6MCkpv1xZCpEwI"
 async function connectDB() {
   try {
-    supabase = await createClient(supabaseUrl, supabaseAnonKey)
+    supabase = await createClient(supabaseUrl, supabaseAnonKey, { global: { fetch } })
 
     // db = await postgres(connectionString)
     console.log("database connected successfully")
@@ -140,29 +141,42 @@ app.get("/analysis/locos", async (req, res) => {
 });
 
 app.get("/api/wagon-totals", async (req, res) => {
-  try {
-    // Check cache first
-    const cacheKey = 'wagon_totals';
-    const cachedData = cache.get(cacheKey);
-    if (cachedData) {
-      return res.json(cachedData);
+  const retry = async (fn, retries = 3, delay = 1000) => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        return await fn();
+      } catch (err) {
+        if (i === retries - 1) throw err;
+        console.warn(`Retry ${i + 1}/${retries} failed: ${err.message}`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
+  };
 
-
-    // Query the view
-    const { data, error } = await supabase
-      .from('wagon_totals_data')
-      .select('wagon, isloaded');
+  try {
+    // Query the view directly
+    console.time('Supabase wagon-totals query');
+    const { data, error } = await retry(async () => {
+      return await supabase
+        .from('wagon_totals_data')
+        .select('wagon, isloaded')
+        .range(0, 999); // Limit to 1000 rows
+    });
+    console.timeEnd('Supabase wagon-totals query');
 
     if (error) {
       console.error('Error fetching view:', {
         message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
+        details: error.details || 'No details provided',
+        hint: error.hint || 'No hint provided',
+        code: error.code || 'No code provided'
       });
       throw error;
     }
+
+    // Log raw data for debugging
+    console.log('Supabase raw data length:', data?.length || 0);
+    console.log('Supabase raw data sample:', data?.slice(0, 5));
 
     // Initialize totals
     let totalLoaded = 0;
@@ -171,9 +185,9 @@ app.get("/api/wagon-totals", async (req, res) => {
     // Process rows
     (data || []).forEach(row => {
       if (row.isloaded === 'L') {
-        totalLoaded += row.wagon || 0;
+        totalLoaded += Number(row.wagon) || 0; // Ensure wagon is treated as integer
       } else if (row.isloaded === 'E') {
-        totalEmpty += row.wagon || 0;
+        totalEmpty += Number(row.wagon) || 0;
       }
     });
 
@@ -182,51 +196,62 @@ app.get("/api/wagon-totals", async (req, res) => {
       { name: "Empty Wagons", value: totalEmpty }
     ];
 
-
     const response = { success: true, data: resultData };
-
-    // Cache the response
-    cache.set(cacheKey, response);
 
     res.json(response);
   } catch (err) {
     console.error("Error in /api/wagon-totals:", {
       message: err.message,
-      stack: err.stack,
-      details: err.details || "No additional details"
+      stack: err.stack || 'No stack trace',
+      details: err.details || 'No additional details',
+      code: err.code || 'No code provided'
     });
     res.status(500).json({
       success: false,
-      message: "Server error fetching wagon totals"
+      message: "Server error fetching wagon totals",
+      error: err.message
     });
   }
 });
 
+
 app.get("/api/ic-stats", async (req, res) => {
-  try {
-    // Check cache first
-    const cacheKey = 'ic_stats';
-    const cachedData = cache.get(cacheKey);
-    if (cachedData) {
-      return res.json(cachedData);
+  const retry = async (fn, retries = 3, delay = 1000) => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        return await fn();
+      } catch (err) {
+        if (i === retries - 1) throw err;
+        console.warn(`Retry ${i + 1}/${retries} failed: ${err.message}`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
+  };
 
-
-    // Query the view
-    const { data, error } = await supabase
-      .from('ic_stats_data')
-      .select('ic');
+  try {
+    // Query the view directly
+    console.time('Supabase ic-stats query');
+    const { data, error } = await retry(async () => {
+      return await supabase
+        .from('ic_stats_data')
+        .select('ic')
+        .range(0, 999); // Limit to 1000 rows
+    });
+    console.timeEnd('Supabase ic-stats query');
 
     if (error) {
       console.error('Error fetching view:', {
         message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
+        details: error.details || 'No details provided',
+        hint: error.hint || 'No hint provided',
+        code: error.code || 'No code provided'
       });
       throw error;
     }
 
+    // Log raw data for debugging
+    console.log('Supabase raw data length:', data?.length || 0);
+    console.log('Supabase raw data sample:', data?.slice(0, 5));
 
     // Count IC and total trains
     let totalIC = 0;
@@ -244,22 +269,20 @@ app.get("/api/ic-stats", async (req, res) => {
       { name: "Non-Interchanged Trains", value: totalTrains - totalIC }
     ];
 
-
     const response = { success: true, data: dataResponse };
-
-    // Cache the response
-    cache.set(cacheKey, response);
 
     res.json(response);
   } catch (err) {
     console.error("Error in /api/ic-stats:", {
       message: err.message,
-      stack: err.stack,
-      details: err.details || "No additional details"
+      stack: err.stack || 'No stack trace',
+      details: err.details || 'No additional details',
+      code: err.code || 'No code provided'
     });
     res.status(500).json({
       success: false,
-      message: "Server error fetching IC stats"
+      message: "Server error fetching IC stats",
+      error: err.message
     });
   }
 });
@@ -795,30 +818,43 @@ app.get("/api/ic-fc-stats", async (req, res) => {
     { src: "sc", dest: "tjsp" }
   ];
 
-  try {
-    // Check cache first
-    const cacheKey = 'ic_fc_stats';
-    const cachedData = cache.get(cacheKey);
-    if (cachedData) {
-      return res.json(cachedData);
+  const retry = async (fn, retries = 3, delay = 1000) => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        return await fn();
+      } catch (err) {
+        if (i === retries - 1) throw err;
+        console.warn(`Retry ${i + 1}/${retries} failed: ${err.message}`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
+  };
 
-
-    // Query the view
-    const { data, error } = await supabase
-      .from('ic_fc_stats_data')
-      .select('route, ic, fc');
+  try {
+    // Query the view directly
+    console.time('Supabase ic-fc query');
+    const { data, error } = await retry(async () => {
+      return await supabase
+        .from('ic_fc_stats_data')
+        .select('route, ic, fc')
+        .in('route', tablePairs.flatMap(pair => [`${pair.src}_${pair.dest}`, `${pair.dest}_${pair.src}`]))
+        .range(0, 999); // Limit to 1000 rows
+    });
+    console.timeEnd('Supabase ic-fc query');
 
     if (error) {
       console.error('Error fetching view:', {
         message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
+        details: error.details || 'No details provided',
+        hint: error.hint || 'No hint provided',
+        code: error.code || 'No code provided'
       });
       throw error;
     }
 
+    // Log raw data for debugging
+    console.log('Supabase raw data length:', data?.length || 0);
+    console.log('Supabase raw data sample:', data?.slice(0, 5));
 
     // Initialize counts for each table
     const tableCounts = {};
@@ -829,7 +865,7 @@ app.get("/api/ic-fc-stats", async (req, res) => {
       tableCounts[reverseTable] = { ic: 0, fc: 0 };
     });
 
-    // Process rows
+    // Process rows to count IC and FC
     (data || []).forEach(row => {
       if (tableCounts[row.route]) {
         if (row.ic === 'Y') tableCounts[row.route].ic++;
@@ -860,26 +896,23 @@ app.get("/api/ic-fc-stats", async (req, res) => {
       };
     });
 
-
     const response = { success: true, data: results };
-
-    // Cache the response
-    cache.set(cacheKey, response);
 
     res.json(response);
   } catch (err) {
     console.error("Error in /api/ic-fc-stats:", {
       message: err.message,
-      stack: err.stack,
-      details: err.details || "No additional details"
+      stack: err.stack || 'No stack trace',
+      details: err.details || 'No additional details',
+      code: err.code || 'No code provided'
     });
     res.status(500).json({
       success: false,
-      message: "Server error fetching IC/FC stats"
+      message: "Server error fetching IC/FC stats",
+      error: err.message
     });
   }
 });
-
 const cache = new NodeCache({ stdTTL: 300 }); // Cache for 5 minutes
 
 app.get("/api/dashboard-stats", async (req, res) => {
@@ -890,14 +923,6 @@ app.get("/api/dashboard-stats", async (req, res) => {
   ];
 
   try {
-    // Check cache first
-    const cacheKey = 'dashboard_stats';
-    const cachedData = cache.get(cacheKey);
-    if (cachedData) {
-      return res.json(cachedData);
-    }
-
-
     // Query the view
     const { data, error } = await supabase
       .from('dashboard_stats_data')
@@ -906,13 +931,15 @@ app.get("/api/dashboard-stats", async (req, res) => {
     if (error) {
       console.error('Error fetching view:', {
         message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
+        details: error.details || 'No details provided',
+        hint: error.hint || 'No hint provided',
+        code: error.code || 'No code provided'
       });
       throw error;
     }
 
+    // Log raw data for debugging
+    console.log('Supabase raw data:', data);
 
     // Initialize aggregates
     let totalICCount = 0;
@@ -943,7 +970,6 @@ app.get("/api/dashboard-stats", async (req, res) => {
       count
     }));
 
-
     const response = {
       success: true,
       stats: {
@@ -954,19 +980,18 @@ app.get("/api/dashboard-stats", async (req, res) => {
       breakdown
     };
 
-    // Cache the response
-    cache.set(cacheKey, response);
-
     res.json(response);
   } catch (err) {
     console.error("Error in /api/dashboard-stats:", {
       message: err.message,
-      stack: err.stack,
-      details: err.details || "No additional details"
+      stack: err.stack || 'No stack trace',
+      details: err.details || 'No additional details',
+      code: err.code || 'No code provided'
     });
     res.status(500).json({
       success: false,
-      message: "Server error fetching dashboard statistics"
+      message: "Server error fetching dashboard statistics",
+      error: err.message
     });
   }
 });

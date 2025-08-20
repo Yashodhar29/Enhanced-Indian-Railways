@@ -17,9 +17,9 @@ export default function StatisticsChart() {
   useEffect(() => {
     const fetchIcFcStats = async () => {
       try {
-        const response = await fetch('https://enhanced-indian-railways.onrender.com/api/ic-fc-stats');
+        const response = await fetch('http://localhost:3002/api/ic-fc-stats');
         const data = await response.json();
-
+        console.log(data);
         if (data.success) {
           // Transform data for the chart
           const chartData = data.data.flatMap((pair: any) =>
@@ -72,14 +72,18 @@ export default function StatisticsChart() {
       colors: ['transparent']
     },
     xaxis: {
-      categories: icFcData.map(item => item.name),
+      categories: icFcData.map(item =>
+        item.name.replace(/_/g, "-").toUpperCase()
+      ),
       labels: {
         rotate: -45,
+        rotateAlways: true, 
         style: {
           fontSize: '12px'
         }
       }
     },
+
     yaxis: {
       title: {
         text: 'Count'
@@ -95,6 +99,7 @@ export default function StatisticsChart() {
         }
       }
     },
+    
     colors: ["#8884d8", "#82ca9d"],
     legend: {
       position: 'top',
@@ -133,11 +138,11 @@ export default function StatisticsChart() {
       ) : (
         <div className="max-w-full overflow-x-auto custom-scrollbar">
           <div className="min-w-[1000px] xl:min-w-full">
-            <Chart 
-              options={options} 
-              series={series} 
-              type="bar" 
-              height={350} 
+            <Chart
+              options={options}
+              series={series}
+              type="bar"
+              height={350}
             />
           </div>
         </div>

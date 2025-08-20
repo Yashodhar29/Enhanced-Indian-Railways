@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 
 export default function EcommerceMetrics() {
-
   const [dashboardStats, setDashboardStats] = useState<DashboardStatsState>({
     totalInterchange: 0,
     totalForecast: 0,
@@ -9,40 +8,49 @@ export default function EcommerceMetrics() {
     loading: true,
     error: null,
   });
+
   interface DashboardStatsState {
     totalInterchange: number;
     totalForecast: number;
-    loading: boolean;
     totalTrains: number;
+    loading: boolean;
     error: string | null;
   }
-  React.useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await fetch('https://enhanced-indian-railways.onrender.com/api/dashboard-stats');
-        const data = await response.json();
 
-        if (data.success) {
-          setDashboardStats({
-            ...data.stats,
-            loading: false,
-            error: null
-          });
-        } else {
-          setDashboardStats(prev => ({
-            ...prev,
-            loading: false,
-            error: data.message || 'Failed to load statistics'
-          }));
-        }
-      } catch (error) {
-        setDashboardStats(prev => ({ ...prev, loading: false, error: 'Error connecting to server' }));
-        console.error('Fetch stats error:', error);
+  const fetchStats = async (bypassCache = false) => {
+    try {
+      const url = bypassCache
+        ? `http://localhost:3002/api/dashboard-stats?t=${Date.now()}`
+        : 'http://localhost:3002/api/dashboard-stats';
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.success) {
+        setDashboardStats({
+          ...data.stats,
+          loading: false,
+          error: null,
+        });
+      } else {
+        setDashboardStats((prev) => ({
+          ...prev,
+          loading: false,
+          error: data.message || 'Failed to load statistics',
+        }));
       }
-    };
-    fetchStats();
-  }, [])
+    } catch (error) {
+      setDashboardStats((prev) => ({
+        ...prev,
+        loading: false,
+        error: 'Error connecting to server',
+      }));
+      console.error('Fetch stats error:', error);
+    }
+  };
 
+  React.useEffect(() => {
+    fetchStats();
+  }, []);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
@@ -103,5 +111,4 @@ export default function EcommerceMetrics() {
       </div>
     </div>
   );
-
 }
