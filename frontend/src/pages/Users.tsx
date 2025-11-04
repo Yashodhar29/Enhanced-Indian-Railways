@@ -36,12 +36,12 @@ export default function Users() {
 
     const fetchUsers = async () => {
         try {
-            const res = await axios.get("http://localhost:3002/api/users");
+            const res = await axios.get("https://improved-b-form-backend.onrender.com/api/users");
             console.log(res)
             if (res.data.success) {
                 setUsers(res.data.users);
             }
-            const res1 = await axios.get("http://localhost:3002/api/get-user-and-role", {
+            const res1 = await axios.get("https://improved-b-form-backend.onrender.com/api/get-user-and-role", {
                 withCredentials: true
             });
             if (res1.data) {
@@ -68,7 +68,7 @@ export default function Users() {
         e.preventDefault();
 
         try {
-            const res = await axios.post("http://localhost:3002/api/add-user", formData);
+            const res = await axios.post("https://improved-b-form-backend.onrender.com/api/add-user", formData);
             if (res.data.success) {
                 toast.success("User added successfully!");
                 setFormData({
@@ -95,7 +95,7 @@ export default function Users() {
         if (!window.confirm("Are you sure you want to delete this user?")) return;
 
         try {
-            const res = await axios.get(`http://localhost:3002/api/users/${id}`, {
+            const res = await axios.get(`https://improved-b-form-backend.onrender.com/api/users/${id}`, {
                 withCredentials: true
             });
             if (res.data.success) {

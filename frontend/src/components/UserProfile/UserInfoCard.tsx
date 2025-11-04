@@ -9,7 +9,7 @@ export default function UserInfoCard() {
 
 
   useEffect(() => {
-    axios.get("http://localhost:3002/api/get-user-and-role", {
+    axios.get("https://improved-b-form-backend.onrender.com/api/get-user-and-role", {
       withCredentials: true
     })
       .then(response => {

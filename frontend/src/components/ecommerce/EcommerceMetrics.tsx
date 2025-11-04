@@ -20,8 +20,8 @@ export default function EcommerceMetrics() {
   const fetchStats = async (bypassCache = false) => {
     try {
       const url = bypassCache
-        ? `http://localhost:3002/api/dashboard-stats?t=${Date.now()}`
-        : 'http://localhost:3002/api/dashboard-stats';
+        ? `https://improved-b-form-backend.onrender.com/api/dashboard-stats?t=${Date.now()}`
+        : 'https://improved-b-form-backend.onrender.com/api/dashboard-stats';
       const response = await fetch(url);
       const data = await response.json();
 
