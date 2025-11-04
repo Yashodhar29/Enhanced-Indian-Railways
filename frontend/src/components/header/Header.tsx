@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { ThemeToggleButton } from "../common/ThemeToggleButton";
 import NotificationDropdown from "./NotificationDropdown";
-import UserDropdown from "./UserDropdown";
 import { Link } from "react-router";
 import axios from 'axios';
 
